@@ -1,0 +1,6 @@
+{
+  "name": "Hearth Community Events",
+  "description": "Event registration, QR check-in, sports brackets, live board and feedback for community groups. First event: JSG Sports Fiesta.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
