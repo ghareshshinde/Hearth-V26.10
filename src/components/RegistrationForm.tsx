@@ -43,7 +43,9 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
   const [busy, setBusy] = useState(false)
   const [ready, setReady] = useState(false) // buttons stay off until the page can respond to them
   const [note, setNote] = useState('')
-  const [flash, setFlash] = useState<number | null>(null)
+  // Games panels that are expanded: the person being filled in is open, the others fold away so the column labels stay in view.
+  const [open, setOpen] = useState<Set<number>>(new Set([0]))
+  const toggleOpen = (i: number) => setOpen((o) => { const n = new Set(o); if (!n.delete(i)) n.add(i); return n })
   const [draftNote, setDraftNote] = useState('')
   const [showErrors, setShowErrors] = useState(false)
   // A field shows its problem once the person leaves it, or stops typing for a moment: mistakes appear while they can still fix them.
@@ -66,7 +68,7 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
       if (d && Date.now() - d.at < DRAFT_DAYS * 86400_000) {
         // localStorage exists only in the browser, so restoring must happen after mount.
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setRows((d.rows as ParticipantInput[]).map((r) => ({ ...blankRow(), ...r }))); setContact(d.contact); setDraftNote('Draft restored')
+        setRows((d.rows as ParticipantInput[]).map((r) => ({ ...blankRow(), ...r }))); setOpen(new Set([d.rows.length - 1])); setContact(d.contact); setDraftNote('Draft restored')
       }
     } catch { /* storage unavailable */ }
   }, [key, initialRows])
@@ -107,9 +109,9 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
     const next = on ? [...new Set([...cur, fmt])] : cur.filter((f) => f !== fmt)
     return next.length ? { ...r, formats: { ...r.formats, [sp]: next } } : r // one format always stays chosen
   })
-  /** Brings the row at `index` into view, highlights it for a moment and puts the cursor in its name cell. */
+  /** Opens the row at `index` (folding the others), brings it into view and puts the cursor in its name cell. */
   const show = (index: number) => {
-    setFlash(index)
+    setOpen(new Set([index]))
     setTimeout(() => {
       const el = tableRef.current?.querySelector<HTMLElement>(`[data-row="${index}"]`)
       el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
@@ -117,7 +119,6 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
       const ae = document.activeElement as HTMLElement | null
       if (!ae || ae === document.body || ae.closest('button')) tableRef.current?.querySelector<HTMLElement>(`[data-r="${index}"][data-c="name"]`)?.focus({ preventScroll: true })
     }, 60)
-    setTimeout(() => setFlash(null), 1600)
   }
   const addRow = () => { setRows((rs) => [...rs, blankRow()]); show(rows.length); setNote(`Person ${rows.length + 1} added`) }
   const dup = (i: number) => {
@@ -126,7 +127,7 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
   }
   const del = (i: number) => {
     setRows((rs) => (rs.length > 1 ? rs.filter((_, j) => j !== i) : [blankRow()]))
-    setRowErrors({}); setNote(rows.length > 1 ? `Person ${i + 1} removed` : 'Row cleared')
+    setRowErrors({}); setOpen(new Set([Math.max(0, Math.min(i, rows.length - 2))])); setNote(rows.length > 1 ? `Person ${i + 1} removed` : 'Row cleared')
   }
 
   // TR6: arrows move between rows in the same column; Enter in the last row adds a row.
@@ -153,13 +154,16 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
     })
   }
 
+  /** A folded games panel must not hide its own error. */
+  const openGamesWithErrors = (errs: Record<number, RowErrors>) => setOpen((o) => new Set([...o, ...Object.keys(errs).map(Number).filter((i) => errs[i].sports || errs[i].skill || errs[i].partners)]))
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setShowErrors(true); setFormError('')
     const errs: Record<number, RowErrors> = {}
     live.forEach((v, i) => { if (!v.ok) errs[i] = v.errors })
     for (const k of ['name', 'age', 'mobile', 'email'] as const) if (registrant[k]) errs[0] = { ...(errs[0] ?? {}), [k]: registrant[k] }
-    setRowErrors(errs)
+    setRowErrors(errs); openGamesWithErrors(errs)
     const first = Object.keys(errs).map(Number).sort((x, y) => x - y)[0]
     const cErrs: Record<string, string> = {}
     if (emName) cErrs.emergencyName = emName
@@ -188,7 +192,7 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
     const re = (res.rowErrors ?? {}) as Record<number, RowErrors>
     if (ce.registrantMobile || ce.registrantEmail || ce.registrantName)
       re[0] = { ...(re[0] ?? {}), ...(ce.registrantName ? { name: ce.registrantName } : {}), ...(ce.registrantMobile ? { mobile: ce.registrantMobile } : {}), ...(ce.registrantEmail ? { email: ce.registrantEmail } : {}) }
-    setRowErrors(re)
+    setRowErrors(re); openGamesWithErrors(re)
   }
 
   const err = (i: number, k: keyof ParticipantInput) => {
@@ -219,7 +223,10 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
     <form onSubmit={onSubmit} noValidate>
       <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hp" value={contact.website ?? ''} onChange={(e) => setContact({ ...contact, website: e.target.value })} />
       <h2>Participants</h2>
-      <p className="muted">The first row is you, the person registering: we use your mobile and email to reach you. Then add everyone else who is coming, including people who will not play a game. Mark each as Member or Guest; organisers verify this. You can paste rows copied from Excel into the first Name cell.</p>
+      <p className="muted">Row 1 is you. Add everyone else who is coming, including people who will not play.</p>
+      <details className="tips"><summary>Tips</summary>
+        <p>We use your mobile and email to reach you. Mark each person as Member or Guest; organisers verify this. You can paste rows copied from Excel into the first Name cell.</p>
+      </details>
       <table ref={tableRef} className="grid-table">
         <thead>
           <tr>
@@ -234,7 +241,7 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
         <tbody>
           {rows.map((r, i) => (
             <Fragment key={i}>
-            <tr data-row={i} className={flash === i ? 'flash' : undefined}>
+            <tr data-row={i} className="personrow">
               <td data-label="#">{i + 1}{i === 0 && <small className="you">You</small>}</td>
               {cell('Name', i, 'name', inp(i, 'name', { autoComplete: 'off' }))}
               {cell('Age', i, 'age', inp(i, 'age', { inputMode: 'numeric', style: { width: '4.5rem' } }))}
@@ -258,10 +265,15 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
                 <button type="button" disabled={!ready} onClick={() => del(i)} title="Delete this person" aria-label={`${rows.length > 1 ? "Delete" : "Clear"} person ${i + 1}`}>{rows.length > 1 ? 'Delete' : 'Clear'}</button>
               </td>
             </tr>
-            <tr className={`gamesrow${flash === i ? ' flash' : ''}`} data-games={i}>
+            <tr className="gamesrow" data-games={i}>
               <td colSpan={gridCols} data-label="Games">
-                <div className="games-head"><strong>Games for {r.name.trim() || (i === 0 ? 'you' : `person ${i + 1}`)}</strong><span className="muted">{r.sports.length ? `${r.sports.length} chosen` : 'Not playing? Leave all unticked, that is fine.'}</span></div>
-                <div className="gamegrid" role="group" aria-label={`Games for person ${i + 1}`}>
+                <div className="games-head">
+                  <strong>Games for {r.name.trim() || (i === 0 ? 'you' : `person ${i + 1}`)}</strong>
+                  <span className="muted">{r.sports.length ? `${r.sports.length} chosen` : 'Not playing? Leave all unticked, that is fine.'}</span>
+                  <button type="button" className="toggle" aria-expanded={open.has(i)} onClick={() => toggleOpen(i)}>{open.has(i) ? 'Hide games ▲' : r.sports.length ? 'Show games ▼' : 'Choose games ▼'}</button>
+                </div>
+                {!open.has(i) && r.sports.length > 0 && <div className="chosen">{r.sports.map((sp) => <span key={sp} className="tag on">{sp}</span>)}</div>}
+                {open.has(i) && <div className="gamegrid" role="group" aria-label={`Games for person ${i + 1}`}>
                   {sports.map((sp) => {
                     const on = r.sports.includes(sp)
                     const allowed = sportFormats(sp)
@@ -309,7 +321,7 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
                       </div>
                     )
                   })}
-                </div>
+                </div>}
                 {err(i, 'sports') && <small role="alert" className="cellerr">{err(i, 'sports')}</small>}
                 {err(i, 'skill') && <small role="alert" className="cellerr">{err(i, 'skill')}</small>}
                 {err(i, 'partners') && <small role="alert" className="cellerr">{err(i, 'partners')}</small>}

@@ -10,12 +10,16 @@ import * as repo from '@/lib/repo'
 afterEach(() => { resetDbForTests(); vi.unstubAllEnvs() })
 
 describe('first run', () => {
-  it('a live site gets only the real community and no demo data', () => {
+  it('a live site gets only the real community and its real event, no demo data', () => {
     vi.stubEnv('NODE_ENV', 'production')
     vi.stubEnv('SEED_DEMO_EVENT', 'false')
     expect(repo.listCommunities().map((c) => c.slug)).toEqual(['jsg'])
     const jsg = repo.getCommunityBySlug('jsg')!
-    expect(repo.listEvents(jsg.id)).toHaveLength(0)
+    const events = repo.listEvents(jsg.id)
+    expect(events.map((e) => e.title)).toEqual(['JSG Sports Fiesta 2026'])
+    expect(events[0].starts_at!.startsWith('2026-12-13')).toBe(true)
+    expect(new Date(events[0].cutoff_at!).getTime()).toBeLessThan(new Date(events[0].starts_at!).getTime())
+    expect(JSON.parse(events[0].sports)).toHaveLength(6)
   })
   it('a live site with no settings at all still starts: the admin password is chosen on first visit and a session secret is generated and kept', async () => {
     vi.stubEnv('NODE_ENV', 'production')

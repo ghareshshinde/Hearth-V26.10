@@ -71,7 +71,6 @@ header.site a{text-decoration:none;color:inherit}
 .skills{display:flex;flex-direction:column;gap:.25rem}
 .skillrow{display:flex;align-items:center;gap:.4rem;font-size:.8rem}
 .skillrow span{min-width:5.5rem}
-.grid-table tr.flash td{background:#fff7d6;transition:background .3s}
 .grid-table td.actions{white-space:nowrap}
 
 /* News-style announcement bar */
@@ -247,7 +246,6 @@ fieldset.card>legend+*{clear:both}
 /* Games picker: one card per sport under each person */
 .sr-only,.grid-table td input.sr-only{position:absolute;left:0;top:0;width:1px!important;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);border:0;opacity:0}
 .grid-table tr.gamesrow>td{padding:.25rem .35rem 1rem;border-top:0}
-.grid-table tr.gamesrow.flash td{background:#fff7d6}
 .games-head{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap;margin:.2rem 0 .6rem;font-size:.95rem}
 .gamegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(15.5rem,1fr));gap:.75rem}
 .gamecard{display:flex;flex-direction:column;gap:.65rem;padding:.7rem;border:2px solid var(--color-border);border-radius:18px;background:var(--color-surface);transition:border-color .15s,box-shadow .2s,background .2s,transform .15s}
@@ -297,3 +295,26 @@ main,.lp-main{animation:pagein .32s ease-out both}
   .grid-table td:nth-child(2) input{min-width:9rem}
   .grid-table th{white-space:nowrap}
 }
+
+/* Registration form: calm, consistent surfaces; column labels stay in view while scrolling */
+.grid-table{border-collapse:separate;border-spacing:0}
+.grid-table thead th{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--color-primary) 8%,var(--color-surface));color:var(--color-text-secondary);font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:.6rem .45rem;border-bottom:2px solid var(--color-border)}
+.grid-table thead th:first-child{border-top-left-radius:var(--radius)}
+.grid-table thead th:last-child{border-top-right-radius:var(--radius)}
+.grid-table tbody tr.personrow td{padding-top:.9rem}
+.grid-table tbody tr.personrow:first-child td{border-top:0}
+.grid-table input:not([type=checkbox]):not([type=radio]),.grid-table select{min-height:42px;border-radius:8px}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid color-mix(in srgb,var(--color-primary) 35%,transparent);outline-offset:1px;border-color:var(--color-primary)}
+.grid-table td.actions button{border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text-primary);border-radius:8px;padding:.4rem .7rem;font-size:.8rem;cursor:pointer;min-height:36px}
+.grid-table td.actions button:hover{border-color:var(--color-primary)}
+.grid-table td.actions button:last-child:hover{border-color:var(--color-error);color:var(--color-error)}
+.games-head{align-items:center}
+.games-head .toggle{margin-left:auto;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-primary);border-radius:999px;padding:.35rem .9rem;font-weight:600;font-size:.82rem;cursor:pointer;min-height:36px}
+.games-head .toggle:hover{border-color:var(--color-primary)}
+.chosen{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.25rem}
+details.tips{margin:-.25rem 0 1rem;font-size:.9rem;color:var(--color-text-secondary)}
+details.tips summary{cursor:pointer;color:var(--color-primary);font-weight:600;width:max-content}
+.btn{font-weight:600;letter-spacing:.01em;transition:filter .15s,box-shadow .15s}
+.btn:hover{filter:brightness(1.07);box-shadow:0 4px 12px color-mix(in srgb,var(--color-primary) 30%,transparent)}
+.summary{box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+fieldset.card{border-radius:calc(var(--radius)*1.4)}

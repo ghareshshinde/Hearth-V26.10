@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next build && SEED_DEMO_EVENT=true next start -H 0.0.0.0 -p 3000",
+    "dev": "next build && next start -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p ${PORT:-8080}",
     "lint": "eslint .",

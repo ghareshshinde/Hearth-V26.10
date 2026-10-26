@@ -61,6 +61,13 @@ export async function checkInAction(slug: string, ticket: string, form: FormData
   redirect(`/c/${slug}/staff/gate?t=${encodeURIComponent(ticket)}&done=${r.admitted.length}`)
 }
 
+export async function donationAction(slug: string, ticket: string, participantId: number, collected: boolean) {
+  const { c, a } = await gateActor(slug)
+  repo.setDonation(c.id, participantId, a.label, collected)
+  await persist()
+  redirect(`/c/${slug}/staff/gate?t=${encodeURIComponent(ticket)}`)
+}
+
 export async function undoCheckInAction(slug: string, ticket: string, participantId: number) {
   const { c, a } = await gateActor(slug)
   repo.undoCheckIn(c.id, participantId, a.label)

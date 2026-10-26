@@ -21,6 +21,7 @@ export type ParticipantRow = {
   mobile: string; email: string; sports: string; skill: string; skills: string; formats: string; partners: string; extra: string; diet: string; tshirt: string; accessibility: string
   kind: 'member' | 'guest'; verified: number; registered_at: string; waitlist: string
   source: string; checked_in_at: string | null; checked_in_by: string | null; checked_in_gate: string | null
+  donation_collected_at: string | null; donation_collected_by: string | null
 }
 
 const db = () => getDb()
@@ -33,7 +34,7 @@ export function ensureBootstrap() {
   const pw = process.env.ADMIN_PASSWORD ?? (process.env.NODE_ENV === 'production' ? null : 'change-me')
   const hash = pw ? hashPassword(pw) : ''
   const mk = db().prepare('insert into community (slug,name,type,city,about,admin_hash) values (?,?,?,?,?,?)')
-  mk.run('jsg', 'JSG Hyderabad', 'trust', 'Hyderabad', 'Jain Social Groups International Federation. Demo tenant for the Sports Fiesta.', hash)
+  mk.run('jsg', 'JSG Hyderabad', 'trust', 'Hyderabad', 'Jain Social Groups International Federation, Hyderabad.', hash)
   // Colours taken from the JSG logo: royal blue and gold. Gold is a fill colour only (it fails contrast as text).
   db().prepare("update community set branding = ? where slug = 'jsg'").run(JSON.stringify({
     name: 'JSG Hyderabad', tagline: 'Grow more to Serve more', logo: '/img/jsg-logo.jpg',
@@ -41,15 +42,18 @@ export function ensureBootstrap() {
       textPrimary: '#0f172a', textSecondary: '#475569', border: '#cbd5e1', link: '#1e4a9e' },
     darkColors: null,
   }))
-  // The dummy second community is for development and tests only; a live site gets JSG alone unless SEED_DEMO_EVENT=true.
-  if (process.env.NODE_ENV !== 'production' || process.env.SEED_DEMO_EVENT === 'true')
-    mk.run('kitty-demo', 'Sunday Kitty Group (demo)', 'unregistered', 'Hyderabad', 'Dummy kitty party group.', hash)
-  if (process.env.NODE_ENV !== 'production' || process.env.SEED_DEMO_EVENT === 'true') {
-    const jsg = one<{ id: number }>("select id from community where slug = 'jsg'")!.id
+  // Production gets JSG and its real event only. Development and tests also get a dummy community and a demo event (or set SEED_DEMO_EVENT=true to see them live).
+  const live = process.env.NODE_ENV === 'production' && process.env.SEED_DEMO_EVENT !== 'true'
+  if (!live) mk.run('kitty-demo', 'Sunday Kitty Group (demo)', 'unregistered', 'Hyderabad', 'Dummy kitty party group.', hash)
+  const jsg = one<{ id: number }>("select id from community where slug = 'jsg'")!.id
+  const ins = db().prepare("insert into event (community_id,title,description,starts_at,ends_at,venue,map_url,sports,cutoff_at,status) values (?,?,?,?,?,?,?,?,?,'published')")
+  const sports = JSON.stringify(['Chess', 'Carrom', 'Cricket', 'Badminton', 'Table Tennis', 'Pickleball'])
+  if (live) // Sunday 13 Dec 2026, IST. Times, venue and map link are placeholders until the committee sets them in the admin console.
+    ins.run(jsg, 'JSG Sports Fiesta 2026', 'JSG Hyderabad Sports Fiesta 2026. Register your family and guests. Guests give a donation, collected offline at the venue.',
+      '2026-12-13T02:30:00.000Z', '2026-12-13T12:30:00.000Z', 'Venue to be announced', '', sports, '2026-12-11T18:29:00.000Z')
+  else {
     const inDays = (d: number) => new Date(Date.now() + d * 86400_000).toISOString()
-    db().prepare("insert into event (community_id,title,description,starts_at,ends_at,venue,map_url,sports,cutoff_at,status) values (?,?,?,?,?,?,?,?,?,'published')")
-      .run(jsg, 'Sports Fiesta (demo)', 'Demo event with fake details. Replace in the admin console.', inDays(30), inDays(30.4), 'Demo Stadium, Hyderabad', 'https://maps.google.com',
-        JSON.stringify(['Chess', 'Carrom', 'Cricket', 'Badminton', 'Table Tennis', 'Pickleball']), inDays(25))
+    ins.run(jsg, 'Sports Fiesta (demo)', 'Demo event with fake details. Replace in the admin console.', inDays(30), inDays(30.4), 'Demo Stadium, Hyderabad', 'https://maps.google.com', sports, inDays(25))
   }
 }
 
@@ -265,8 +269,12 @@ export function updateRegistration(ev: EventRow, reg: RegistrationRow, contact: 
   try {
     d.prepare('update registration set registrant_name=?,registrant_mobile=?,registrant_email=?,emergency_name=?,emergency_mobile=?,updated_at=? where community_id=? and id=?')
       .run(v.contact.registrantName, v.contact.registrantMobile, v.contact.registrantEmail, v.contact.emergencyName, v.contact.emergencyMobile, now.toISOString(), reg.community_id, reg.id)
+    const paid = all<ParticipantRow>('select * from participant where community_id=? and registration_id=? and donation_collected_at is not null', reg.community_id, reg.id)
     d.prepare('delete from participant where community_id=? and registration_id=?').run(reg.community_id, reg.id)
     insertParticipants(ev, reg.id, v.rows)
+    for (const p of paid) // an edit must not lose a donation already recorded for the same guest
+      d.prepare("update participant set donation_collected_at=?, donation_collected_by=? where community_id=? and registration_id=? and name=? and mobile=? and kind='guest'")
+        .run(p.donation_collected_at, p.donation_collected_by, reg.community_id, reg.id, p.name, p.mobile)
     audit(reg.community_id, 'public', 'registration.edited', reg.ref, { participants: v.rows.length })
     d.exec('commit')
   } catch (e) { d.exec('rollback'); throw e }
@@ -373,6 +381,15 @@ export function checkIn(cid: number, ids: number[], by: string, gate: string, no
 export function undoCheckIn(cid: number, id: number, by: string) {
   const r = db().prepare('update participant set checked_in_at = null, checked_in_by = null, checked_in_gate = null where community_id = ? and id = ? and checked_in_at is not null').run(cid, id)
   if (r.changes) audit(cid, by, 'checkin.undone', String(id))
+  return r.changes > 0
+}
+
+/** Guests pay their donation offline; a volunteer records it here (before the event or at check-in). Members never owe one. */
+export function setDonation(cid: number, id: number, by: string, collected: boolean, now = new Date()) {
+  const r = collected
+    ? db().prepare("update participant set donation_collected_at = ?, donation_collected_by = ? where community_id = ? and id = ? and kind = 'guest' and donation_collected_at is null").run(now.toISOString(), by, cid, id)
+    : db().prepare("update participant set donation_collected_at = null, donation_collected_by = null where community_id = ? and id = ? and donation_collected_at is not null").run(cid, id)
+  if (r.changes) audit(cid, by, collected ? 'donation.collected' : 'donation.undone', String(id))
   return r.changes > 0
 }
 
@@ -529,6 +546,7 @@ export function stats(rows: Row[]) {
     verified: live.filter((r) => r.verified).length,
     arrived: live.filter((r) => r.checked_in_at).length,
     walkIns: live.filter((r) => r.source === 'spot').length,
+    donations: live.filter((r) => r.kind === 'guest' && r.donation_collected_at).length,
     pending: new Set(live.filter((r) => r.reg_status === 'pending').map((r) => r.registration_id)).size,
     sports: count((r) => r.sportList.filter((x) => !r.waitlistList.includes(x))), waitlisted: count((r) => r.waitlistList), diets: count((r) => [r.diet]), tshirts: count((r) => (r.tshirt ? [r.tshirt] : [])),
     gender: count((r) => [r.gender]),

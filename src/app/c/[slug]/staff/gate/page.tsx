@@ -4,7 +4,7 @@ import { currentEvent, findRegistrations, getRegistrationById, listParticipantsO
 import { canCheckIn, gateCookieName, requireActor } from '@/lib/session'
 import { parseTicket } from '@/lib/ticket'
 import { eventSettings } from '@/lib/registration/rules'
-import { checkInAction, undoCheckInAction } from '@/app/staff-actions'
+import { checkInAction, donationAction, undoCheckInAction } from '@/app/staff-actions'
 import { makeTicket } from '@/lib/ticket'
 import { formatIst } from '@/lib/time'
 import AutoRefresh from '@/components/AutoRefresh'
@@ -36,7 +36,7 @@ export default async function Gate({ params, searchParams }: { params: Promise<{
       <AutoRefresh seconds={8} />
       <p><Link href={`/c/${slug}/staff`}>Home</Link></p>
       <h1 style={{ marginBottom: 0 }}>Check-in</h1>
-      <p className="muted" style={{ marginTop: 0 }}>{ev.title} · <strong>{s.arrived}</strong> of {s.participants} people in{s.walkIns ? ` · ${s.walkIns} walk-ins` : ''}</p>
+      <p className="muted" style={{ marginTop: 0 }}>{ev.title} · <strong>{s.arrived}</strong> of {s.participants} people in{s.walkIns ? ` · ${s.walkIns} walk-ins` : ''} · donations collected from <strong>{s.donations}</strong> of {s.guests} guests</p>
       <GatePicker slug={slug} gates={settings.gates} current={gate} />
       {settings.gates.length > 0 && !gate && <p className="warn">Choose which gate this device is at, so each arrival records where it happened.</p>}
 
@@ -77,6 +77,11 @@ export default async function Gate({ params, searchParams }: { params: Promise<{
                   {p.checked_in_at ? <span style={{ width: 28 }} aria-hidden="true" /> : <input type="checkbox" name="ids" value={p.id} defaultChecked style={{ width: 28, height: 28 }} />}
                   <span><strong>{p.name}</strong>, {p.age}<br /><small className="muted">{p.kind} · {(JSON.parse(p.sports) as string[]).join(', ')}{p.source === 'spot' ? ' · walk-in' : ''}</small></span>
                 </label>
+                {p.kind === 'guest' && (
+                  <button formAction={donationAction.bind(null, slug, sp.t!, p.id, !p.donation_collected_at)} title="Donation is collected offline" style={{ minHeight: 44 }}>
+                    {p.donation_collected_at ? 'Donation collected ✓ (undo)' : 'Mark donation collected'}
+                  </button>
+                )}
                 {p.checked_in_at && (
                   <span style={{ textAlign: 'right' }}>
                     <span className="tag" style={{ color: 'var(--color-success)', borderColor: 'var(--color-success)' }}>In {formatIst(p.checked_in_at, { timeStyle: 'short' })}</span>
