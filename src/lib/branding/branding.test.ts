@@ -28,6 +28,10 @@ describe('branding', () => {
   it('dark mode can be switched off', () => {
     expect(brandingToCss(resolveBranding({ darkColors: null }))).not.toContain('prefers-color-scheme')
   })
+  it('a light-only brand outranks the platform dark block, a dark-capable one does not need to', () => {
+    expect(brandingToCss(resolveBranding({ darkColors: null }))).toMatch(/^:root:root\{/)
+    expect(brandingToCss(resolveBranding({}))).toMatch(/^:root\{/)
+  })
   it('strips unsafe characters from font names', () => {
     const css = brandingToCss(resolveBranding({ fonts: { heading: 'Evil;}body{x:y' } }))
     expect(css).not.toContain('}body{')

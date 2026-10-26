@@ -1,10 +1,11 @@
 import { itineraryNow, type ItineraryItem } from '@/lib/registration/rules'
 import { formatIst } from '@/lib/time'
+import Pic from '@/components/Pic'
 
 export const clock = (t: string) => { const [h, m] = t.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}` }
 
 /** What happens when, for every kind of event. On the day it marks what is under way and what is next. */
-export default function ItineraryView({ items, startIso, title = 'Programme: what to expect', open = true }: { items: ItineraryItem[]; startIso: string | null; title?: string; open?: boolean }) {
+export default function ItineraryView({ items, startIso, title = 'Programme: what to expect', open = true, image }: { items: ItineraryItem[]; startIso: string | null; title?: string; open?: boolean; image?: string }) {
   if (!items.length || !startIso) return null
   const { now, next } = itineraryNow(items, startIso)
   const days = [...new Set(items.map((i) => i.day))]
@@ -12,6 +13,8 @@ export default function ItineraryView({ items, startIso, title = 'Programme: wha
   return (
     <details className="card itin" open={open || undefined} id="programme">
       <summary>{title}</summary>
+      <div className={image ? 'itin-body with-img' : 'itin-body'}>
+      <div>
       {days.map((d) => (
         <section key={d}>
           {(days.length > 1 || d > 1) && <h3>{dayName(d)}</h3>}
@@ -27,6 +30,9 @@ export default function ItineraryView({ items, startIso, title = 'Programme: wha
           </ol>
         </section>
       ))}
+      </div>
+      {image && <div className="itin-img"><Pic src={image} width={360} height={200} /></div>}
+      </div>
     </details>
   )
 }

@@ -337,10 +337,6 @@ export default function RegistrationForm({ slug, eventId, sports, rules = {}, co
       <p><button type="button" className="btn outline" disabled={!ready} onClick={() => addRow()}>Add person</button> <span className="muted" role="status">{note || draftNote}</span></p>
       {rows.length > SOFT_LIMIT && <p className="warn" role="status">You are registering more than {SOFT_LIMIT} people. You can continue, but please check the list.</p>}
 
-      <p className="summary" aria-live="polite">
-        <strong>{summary.participants}</strong> {summary.participants === 1 ? 'participant' : 'participants'} · <strong>{summary.members}</strong> {summary.members === 1 ? 'member' : 'members'} · <strong>{summary.guests}</strong> {summary.guests === 1 ? 'guest' : 'guests'} · <strong>{summary.sports}</strong> {summary.sports === 1 ? 'sport' : 'sports'} · <strong>{summary.playing}</strong> playing
-      </p>
-
       <fieldset className="card" id="emergency">
         <legend>Emergency contact</legend>
         <p className="muted" style={{ marginTop: 0 }}>Someone we can call if anyone on this registration is hurt. They must not be on this registration, because everyone on it will be at the venue.</p>
@@ -358,7 +354,15 @@ export default function RegistrationForm({ slug, eventId, sports, rules = {}, co
       </label>
       {contactErrors.waiver && <small role="alert" className="cellerr">{contactErrors.waiver}</small>}
       {formError && <p role="alert" className="cellerr">{formError}</p>}
-      <p><button className="btn" disabled={busy || !ready}>{busy ? 'Saving…' : submitLabel}</button></p>
+      <div className="subbar">
+        <p className="counts" aria-live="polite">
+          <span><b>{summary.participants}</b> {summary.participants === 1 ? 'person' : 'people'}</span>
+          <span><b>{summary.members}</b> {summary.members === 1 ? 'member' : 'members'}</span>
+          <span><b>{summary.guests}</b> {summary.guests === 1 ? 'guest' : 'guests'}</span>
+          <span><b>{rows.reduce((n, r) => n + r.sports.length, 0)}</b> games</span>
+        </p>
+        <button className="btn cta" disabled={busy || !ready}>{busy ? 'Saving…' : submitLabel}</button>
+      </div>
     </form>
   )
 }
