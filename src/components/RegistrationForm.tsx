@@ -14,6 +14,8 @@ type Props = {
   slug: string
   eventId: number
   sports: string[]
+  /** Written rules per sport, shown on the game's card once it is ticked. */
+  rules?: Record<string, string>
   columns: ColumnConfig
   ages?: Record<string, { min?: number; max?: number }>
   diets?: string[]
@@ -33,7 +35,7 @@ const NO_AGES = {}
 const NO_DIETS: string[] = []
 const NO_QUESTIONS: Question[] = []
 
-export default function RegistrationForm({ slug, eventId, sports, columns, ages = NO_AGES, diets = NO_DIETS, questions = NO_QUESTIONS, waiver, emailRequired = true, seatsLeft, initialRows, initialContact, submit, submitLabel, draftKey }: Props) {
+export default function RegistrationForm({ slug, eventId, sports, rules = {}, columns, ages = NO_AGES, diets = NO_DIETS, questions = NO_QUESTIONS, waiver, emailRequired = true, seatsLeft, initialRows, initialContact, submit, submitLabel, draftKey }: Props) {
   const router = useRouter()
   const [rows, setRows] = useState<ParticipantInput[]>(initialRows?.length ? initialRows : [blankRow()])
   const [contact, setContact] = useState<Contact>({ registrantName: '', registrantMobile: '', registrantEmail: '', emergencyName: '', emergencyMobile: '', waiver: false, ...initialContact })
@@ -313,6 +315,7 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
                             </div>
                           </div>
                         )}
+                        {on && rules[sp] && <details className="gc-rules"><summary>Rules for {sp}</summary><p>{rules[sp]}</p></details>}
                         {wantsPartner && (
                           <input className="partner" data-r={i} data-c={`partner-${sp}`} maxLength={60} aria-label={picked.includes('team') ? `Team name for ${sp}` : `Partner for ${sp}`} value={r.partners[sp] ?? ''}
                             placeholder={picked.includes('team') ? 'Team name (optional)' : "Partner's name or HR reference (optional)"}

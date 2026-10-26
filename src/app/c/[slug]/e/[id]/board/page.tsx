@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import Image from 'next/image'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
@@ -7,6 +7,9 @@ import { requireCommunity } from '@/lib/session'
 import { getEvent, listRows } from '@/lib/repo'
 import { listCompetitions, listMatches, podium, roundName, standings, listEntries, type Competition, type Match } from '@/lib/sports-ops'
 import { sportIcon } from '@/lib/sports'
+import { clockNow, describeSlot, isEventDay, slotMinutes } from '@/lib/time'
+import { eventSettings, itineraryNow } from '@/lib/registration/rules'
+import { clock } from '@/components/ItineraryView'
 import { memo } from '@/lib/memo'
 import AutoRefresh from '@/components/AutoRefresh'
 import BoardCycle from '@/components/BoardCycle'
@@ -78,19 +81,23 @@ export default async function Board({ params }: { params: Promise<{ slug: string
   const c = await requireCommunity(slug)
   const ev = getEvent(c.id, Number(id))
   if (!ev || ev.status === 'draft') notFound()
-  const { data, shownData, live, next, arrived, total, done } = memo(`board:${c.id}:${ev.id}`, 2000, () => {
+  const { data, shownData, live, next, arrived, total, done, slots, prog } = memo(`board:${c.id}:${ev.id}`, 2000, () => {
     const comps = listCompetitions(c.id, ev.id).filter((k) => k.drawn)
     const data = comps.map((k) => ({ k, ms: listMatches(c.id, k.id), pod: podium(c.id, k.id), entries: listEntries(c.id, k.id) }))
     const shownData = data.filter((d) => d.k.published_rounds > 0 || d.pod.complete)
     const all = data.flatMap((d) => d.ms.filter((m) => !m.bye && (d.k.published_rounds >= m.round || d.pod.complete)).map((m) => ({ d, m })))
     const live = all.filter((x) => x.m.status === 'live')
     const next = all.filter((x) => x.m.status !== 'done' && x.m.status !== 'live' && x.m.a_entry && x.m.b_entry)
-      .sort((a, b) => (a.m.scheduled_at || '~').localeCompare(b.m.scheduled_at || '~') || a.m.round - b.m.round).slice(0, 4)
+      .sort((a, b) => (slotMinutes(a.m.scheduled_at) ?? 1e4) - (slotMinutes(b.m.scheduled_at) ?? 1e4) || a.m.round - b.m.round).slice(0, 4)
     const rows = listRows(c.id, ev.id)
     const arrived = rows.filter((r) => r.checked_in_at && r.reg_status !== 'cancelled').length
     const total = data.flatMap((d) => d.ms.filter((m) => !m.bye)).length
     const done = data.flatMap((d) => d.ms.filter((m) => !m.bye && m.status === 'done')).length
-    return { data, shownData, live, next, arrived, total, done }
+    // Read the clock here, with the other data, so a rendering never depends on it.
+    const nowMs = clockNow(), today = isEventDay(ev.starts_at, nowMs)
+    const slots = Object.fromEntries(next.map(({ m }) => { const s = describeSlot(m.scheduled_at, nowMs, today); return [m.id, s.label ? `${s.label}${s.when ? ` (${s.when})` : ''}` : ''] }))
+    const prog = ev.starts_at ? itineraryNow(eventSettings(ev.config).itinerary, ev.starts_at, nowMs) : { now: undefined, next: undefined }
+    return { data, shownData, live, next, arrived, total, done, slots, prog }
   })
   const h = await headers()
   const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost:3000'
@@ -150,8 +157,15 @@ export default async function Board({ params }: { params: Promise<{ slug: string
         </div>
         <div className="b-now">
           <strong className="chip gold">Up next</strong>
-          {next.length ? next.map(({ d, m }) => <span key={m.id}>{m.court || d.k.sport}{m.scheduled_at ? ` ${m.scheduled_at}` : ''}: {nameOf(m)}</span>) : <span className="dim">Nothing scheduled yet</span>}
+          {next.length ? next.map(({ d, m }) => <span key={m.id}>{slots[m.id] && <b>{slots[m.id]} </b>}{m.court || d.k.sport}: {nameOf(m)}</span>) : <span className="dim">Nothing scheduled yet</span>}
         </div>
+        {(prog.now || prog.next) && (
+          <div className="b-now">
+            <strong className="chip blue">Programme</strong>
+            {prog.now && <span>Now: {prog.now.title}</span>}
+            {prog.next && <span><b>{clock(prog.next.time)} </b>Next: {prog.next.title}</span>}
+          </div>
+        )}
       </footer>
     </div>
   )

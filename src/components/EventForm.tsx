@@ -1,5 +1,5 @@
 import { saveEventAction } from '@/app/actions'
-import { DEFAULT_COLUMNS, DEFAULT_SPORTS, DIETS, columnConfig, eventSettings, type OptionalColumn } from '@/lib/registration/rules'
+import { DEFAULT_COLUMNS, DEFAULT_SPORTS, DIETS, columnConfig, eventSettings, itineraryToText, type OptionalColumn } from '@/lib/registration/rules'
 import { sportFormats, sportIcon } from '@/lib/sports'
 import Pic from '@/components/Pic'
 import { isoToIstInput } from '@/lib/time'
@@ -49,6 +49,10 @@ export default function EventForm({ slug, ev }: { slug: string; ev?: EventRow })
           <label>WhatsApp group or channel link<input type="url" name="group_whatsapp" defaultValue={settings.groups.whatsapp} placeholder="https://chat.whatsapp.com/..." pattern="https://(chat\.whatsapp\.com|www\.whatsapp\.com|whatsapp\.com|wa\.me)/.+" title="A link that starts with https://chat.whatsapp.com/, https://whatsapp.com/channel/ or https://wa.me/" /></label>
           <label>Telegram group or channel link<input type="url" name="group_telegram" defaultValue={settings.groups.telegram} placeholder="https://t.me/..." pattern="https://(t\.me|telegram\.me|telegram\.dog)/.+" title="A link that starts with https://t.me/" /></label>
         </div>
+      </fieldset>
+      <fieldset><legend>Programme</legend>
+        <p className="muted" style={{ margin: '0 0 .5rem' }}>What happens when, so everyone knows what to expect. One item per line: time | what | optional note. Add &ldquo;Day 2&rdquo; in front for later days. Times are IST. Shown on the event page, the registration page and tickets, and the live board marks what is on now.</p>
+        <label>Programme<textarea name="itinerary" rows={8} maxLength={4000} defaultValue={itineraryToText(settings.itinerary)} placeholder={'8:00 am | Gates open and check-in | Bring your QR ticket\n9:00 am | Opening ceremony\n9:30 am | Chess and Carrom begin\n1:00 pm | Lunch\nDay 2 10:00 am | Finals'} /></label>
       </fieldset>
       <fieldset><legend>Rules</legend>
         <p className="muted" style={{ margin: '0 0 .5rem' }}>Shown to families on the event page and to coordinators on each category. Plain text; use new lines. Leave empty for none. Rules for a newly added sport can be written after you save it once.</p>

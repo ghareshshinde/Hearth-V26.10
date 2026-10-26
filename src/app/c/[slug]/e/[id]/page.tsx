@@ -8,6 +8,7 @@ import { sportIcon } from '@/lib/sports'
 import { eventSettings } from '@/lib/registration/rules'
 import ShareButton from '@/components/ShareButton'
 import RulesView from '@/components/RulesView'
+import ItineraryView from '@/components/ItineraryView'
 import Pic from '@/components/Pic'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; id: string }> }) {
@@ -39,6 +40,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         <Pic className="bg" src="/img/hero.svg" width={1200} height={460} />
         <div className="inner">
           <div style={{ flex: '3 1 22rem', display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
+            {c.brand.logo && <Pic src={c.brand.logo} size={72} alt={c.brand.name} style={{ borderRadius: '50%', background: '#fff' }} />}
             <span className="badge" style={{ alignSelf: 'flex-start' }}>{open ? 'Registration open' : 'Registration closed'}</span>
             <h1>{ev.title}</h1>
             {c.brand.tagline && <p style={{ margin: 0, fontSize: '1.2rem' }}>{c.brand.tagline}</p>}
@@ -61,6 +63,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           {ev.cutoff_at && <div className="fact"><small>Register and edit until</small><strong>{formatIst(ev.cutoff_at)}</strong></div>}
         </div>
         {ev.description && <p style={{ whiteSpace: 'pre-wrap' }}>{ev.description}</p>}
+
+        <ItineraryView items={settings.itinerary} startIso={ev.starts_at} />
 
         <h2>Pick your games</h2>
         <div className="tiles">

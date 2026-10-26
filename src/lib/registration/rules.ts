@@ -102,8 +102,41 @@ export function parseGroups(v: unknown): GroupLinks {
   return { whatsapp: groupLink('whatsapp', o.whatsapp), telegram: groupLink('telegram', o.telegram) }
 }
 
+/** The programme: what happens when, so people know what to expect. Day 1 is the event's start date; times are IST. */
+export type ItineraryItem = { day: number; time: string; title: string; note: string }
+const ITEM_LINE = /^\s*(?:day\s*(\d{1,2})\s+)?(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*\|\s*([^|]+?)\s*(?:\|\s*(.*?))?\s*$/i
+const byTime = (a: ItineraryItem, b: ItineraryItem) => a.day - b.day || a.time.localeCompare(b.time)
+/** One item per line: "Day 2 9:30 am | Chess finals | Hall B". Day is optional; lines that do not fit are skipped. */
+export function parseItineraryText(text: unknown): ItineraryItem[] {
+  const out: ItineraryItem[] = []
+  for (const line of String(text ?? '').split('\n').slice(0, 80)) {
+    const m = ITEM_LINE.exec(line)
+    if (!m) continue
+    let h = Number(m[2]); const min = Number(m[3] ?? 0)
+    if (m[4]) h = (h % 12) + (m[4].toLowerCase() === 'pm' ? 12 : 0)
+    if (h > 23 || min > 59) continue
+    out.push({ day: Math.min(30, Math.max(1, Number(m[1] ?? 1))), time: `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`, title: m[5].slice(0, 100), note: (m[6] ?? '').slice(0, 200) })
+  }
+  return out.sort(byTime)
+}
+export function parseItinerary(v: unknown): ItineraryItem[] {
+  if (!Array.isArray(v)) return []
+  return parseItineraryText(v.map((i: Partial<ItineraryItem>) => `Day ${Number(i?.day) || 1} ${i?.time ?? ''} | ${String(i?.title ?? '').replace(/\|/g, '/')} | ${String(i?.note ?? '').replace(/\|/g, '/')}`).join('\n'))
+}
+export const itineraryToText = (items: ItineraryItem[]) => items.map((i) => `Day ${i.day} ${i.time} | ${i.title}${i.note ? ` | ${i.note}` : ''}`).join('\n')
+/** When an item starts, as a time in ms: the event's IST start date plus the item's day and time. */
+export function itineraryStart(item: ItineraryItem, eventStartIso: string): number {
+  const date = new Date(new Date(eventStartIso).getTime() + 5.5 * 3600_000).toISOString().slice(0, 10)
+  return new Date(`${date}T${item.time}:00+05:30`).getTime() + (item.day - 1) * 86400_000
+}
+/** The item under way (the latest that has started) and the one coming next. */
+export function itineraryNow(items: ItineraryItem[], eventStartIso: string, now = Date.now()) {
+  const done = items.filter((i) => itineraryStart(i, eventStartIso) <= now).length
+  return { now: done > 0 && done < items.length ? items[done - 1] : undefined, next: items[done] }
+}
+
 export type AgeLimit = { min?: number; max?: number }
-export type EventSettings = { capacity: Record<string, number>; ages: Record<string, AgeLimit>; waiver: string; gates: string[]; spot: { open: boolean; cap: number }; approvalRequired: boolean; contactEmailRequired: boolean; diets: string[]; questions: Question[]; rules: EventRules; groups: GroupLinks }
+export type EventSettings = { capacity: Record<string, number>; ages: Record<string, AgeLimit>; waiver: string; gates: string[]; spot: { open: boolean; cap: number }; approvalRequired: boolean; contactEmailRequired: boolean; diets: string[]; questions: Question[]; rules: EventRules; groups: GroupLinks; itinerary: ItineraryItem[] }
 export const DEFAULT_WAIVER =
   'I accept the injury waiver for everyone listed. For children I am the parent or guardian and consent to their participation.'
 
@@ -121,7 +154,7 @@ export function eventSettings(raw: string | null | undefined): EventSettings {
   const gates = Array.isArray(c.gates) ? (c.gates as unknown[]).map((g) => String(g).trim()).filter(Boolean).slice(0, 12) : []
   const sp = (c.spot ?? {}) as { open?: boolean; cap?: number }
   // Required unless an admin switches it off: the emailed link is how a family gets back to its registration.
-  return { groups: parseGroups(c.groups), rules: parseRules(c.rules), questions: parseQuestions(c.questions), diets: parseDiets(c.diets), contactEmailRequired: c.contactEmailRequired !== false, approvalRequired: c.approvalRequired === true, gates, spot: { open: sp.open === true, cap: Math.max(0, Math.floor(Number(sp.cap) || 0)) }, capacity, ages, waiver: typeof c.waiver === 'string' && c.waiver.trim() ? c.waiver : DEFAULT_WAIVER }
+  return { itinerary: parseItinerary(c.itinerary), groups: parseGroups(c.groups), rules: parseRules(c.rules), questions: parseQuestions(c.questions), diets: parseDiets(c.diets), contactEmailRequired: c.contactEmailRequired !== false, approvalRequired: c.approvalRequired === true, gates, spot: { open: sp.open === true, cap: Math.max(0, Math.floor(Number(sp.cap) || 0)) }, capacity, ages, waiver: typeof c.waiver === 'string' && c.waiver.trim() ? c.waiver : DEFAULT_WAIVER }
 }
 
 export const normalizeMobile = (v: string) => v.replace(/[\s-]/g, '').replace(/^(\+91|91|0)(?=\d{10}$)/, '')

@@ -1,3 +1,4 @@
+import ItineraryView from '@/components/ItineraryView'
 import QRCode from 'qrcode'
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
@@ -48,6 +49,7 @@ export default async function Ticket({ params }: { params: Promise<{ slug: strin
           </div>
         )}
         {settings.gates.length > 0 && <p><strong>Check-in:</strong> {settings.gates.join(' · ')}</p>}
+        <ItineraryView items={settings.itinerary} startIso={ev.starts_at} open={false} />
         {ev.map_url && <p><a href={ev.map_url} target="_blank" rel="noreferrer">Open venue in Maps</a> · <a href={googleCalendarUrl(ev)} target="_blank" rel="noreferrer">Add to calendar</a></p>}
       </div>
       {ts.valid && <div style={{ marginTop: '1rem' }}><GroupLinks groups={settings.groups} compact /></div>}

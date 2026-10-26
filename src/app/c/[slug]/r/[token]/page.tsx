@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { requireCommunity } from '@/lib/session'
 import { getEvent, getRegistrationByToken, isOpen, listParticipantsOfRegistration, seatsLeft, ticketStatus } from '@/lib/repo'
-import { blankRow, columnConfig, eventSettings, skillsOf, extraOf, formatsOf, partnersOf } from '@/lib/registration/rules'
+import { blankRow, columnConfig, eventSettings, skillsOf, extraOf, formatsOf, partnersOf, rulesFor } from '@/lib/registration/rules'
 import { cancelOwnRegistration, editRegistration } from '@/app/actions'
 import RegistrationForm from '@/components/RegistrationForm'
 import GroupLinks from '@/components/GroupLinks'
@@ -60,7 +60,7 @@ export default async function MyRegistration({ params, searchParams }: { params:
         {editable ? (
           <>
             <RegistrationForm
-              slug={slug} eventId={ev.id} sports={JSON.parse(ev.sports)} columns={columnConfig(ev.config)} ages={settings.ages} diets={settings.diets} questions={settings.questions} waiver={settings.waiver} emailRequired={settings.contactEmailRequired}
+              slug={slug} eventId={ev.id} sports={JSON.parse(ev.sports)} rules={Object.fromEntries((JSON.parse(ev.sports) as string[]).map((s) => [s, rulesFor(settings.rules, s).map((b) => b.text).join('\n\n')]).filter(([, t]) => t))} columns={columnConfig(ev.config)} ages={settings.ages} diets={settings.diets} questions={settings.questions} waiver={settings.waiver} emailRequired={settings.contactEmailRequired}
               seatsLeft={seatsLeft(ev)} draftKey={`edit-${reg.id}`}
               initialRows={rowsForEdit(people, reg)}
               initialContact={{ registrantName: reg.registrant_name, registrantMobile: reg.registrant_mobile, registrantEmail: reg.registrant_email, emergencyName: reg.emergency_name, emergencyMobile: reg.emergency_mobile, waiver: true }}
