@@ -26,7 +26,6 @@ type Props = {
   submit: (contact: Contact, rows: ParticipantInput[]) => Promise<SubmitResult>
   submitLabel: string
   draftKey?: string
-  token?: string
 }
 
 const DRAFT_DAYS = 7
@@ -34,39 +33,10 @@ const NO_AGES = {}
 const NO_DIETS: string[] = []
 const NO_QUESTIONS: Question[] = []
 
-export default function RegistrationForm({ slug, eventId, sports, columns, ages = NO_AGES, diets = NO_DIETS, questions = NO_QUESTIONS, waiver, emailRequired = true, seatsLeft, initialRows, initialContact, submit, submitLabel, draftKey, token }: Props) {
+export default function RegistrationForm({ slug, eventId, sports, columns, ages = NO_AGES, diets = NO_DIETS, questions = NO_QUESTIONS, waiver, emailRequired = true, seatsLeft, initialRows, initialContact, submit, submitLabel, draftKey }: Props) {
   const router = useRouter()
   const [rows, setRows] = useState<ParticipantInput[]>(initialRows?.length ? initialRows : [blankRow()])
-  const [contact, setContact] = useState<Contact>(() => {
-    let savedEmergency = { name: '', mobile: '' }
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('hearth_last_emergency')
-        if (stored) savedEmergency = JSON.parse(stored)
-      } catch { /* ignore */ }
-    }
-    return {
-      registrantName: initialContact?.registrantName ?? '',
-      registrantMobile: initialContact?.registrantMobile ?? '',
-      registrantEmail: initialContact?.registrantEmail ?? '',
-      emergencyName: initialContact?.emergencyName || savedEmergency.name || '',
-      emergencyMobile: initialContact?.emergencyMobile || savedEmergency.mobile || '',
-      waiver: initialContact?.waiver ?? false,
-      ...initialContact,
-    }
-  })
-
-  useEffect(() => {
-    if (initialContact) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setContact((prev) => ({
-        ...prev,
-        ...initialContact,
-        emergencyName: initialContact.emergencyName || prev.emergencyName,
-        emergencyMobile: initialContact.emergencyMobile || prev.emergencyMobile,
-      }))
-    }
-  }, [initialContact])
+  const [contact, setContact] = useState<Contact>({ registrantName: '', registrantMobile: '', registrantEmail: '', emergencyName: '', emergencyMobile: '', waiver: false, ...initialContact })
   const [rowErrors, setRowErrors] = useState<Record<number, RowErrors>>({})
   const [contactErrors, setContactErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState('')
@@ -86,12 +56,11 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
   const [submissionKey] = useState(() => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `k${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`))
   const key = draftKey ?? `hearth-draft-${eventId}`
 
-  const restored = useRef(false)
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setReady(true), [])
   // TR9: draft kept 7 days in this browser.
   useEffect(() => {
-    if (initialRows) { restored.current = true; return }
+    if (initialRows) return
     try {
       const d = JSON.parse(localStorage.getItem(key) ?? 'null')
       if (d && Date.now() - d.at < DRAFT_DAYS * 86400_000) {
@@ -100,13 +69,12 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
         setRows((d.rows as ParticipantInput[]).map((r) => ({ ...blankRow(), ...r }))); setContact(d.contact); setDraftNote('Draft restored')
       }
     } catch { /* storage unavailable */ }
-    restored.current = true
   }, [key, initialRows])
   useEffect(() => {
-    if (!restored.current || initialRows) return
+    if (initialRows) return
     const t = setTimeout(() => {
       try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), rows, contact })) } catch { /* ignore */ }
-    }, 300)
+    }, 400)
     return () => clearTimeout(t)
   }, [rows, contact, key, initialRows])
 
@@ -125,26 +93,15 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
     playing: rows.filter((r) => r.sports.length).length,
   }
 
-  // Which rows have their games pane expanded (row 0 open by default)
-  const [expandedGames, setExpandedGames] = useState<Record<number, boolean>>({ 0: true })
-  const isGamesExpanded = (idx: number) => expandedGames[idx] !== false
-
   const set = (i: number, k: keyof ParticipantInput, v: string | string[]) => {
     setRows((rs) => rs.map((r, j) => (j === i ? { ...r, [k]: v } : r)))
     touchSoon(`${i}:${k}`)
   }
   const patchRow = (i: number, f: (r: ParticipantInput) => ParticipantInput) => setRows((rs) => rs.map((r, j) => (j === i ? f(r) : r)))
-  /** Ticking a sport starts with the sport's first format (singles, or team); defaults skill to casual if none selected. */
-  const toggleSport = (i: number, sp: string, on: boolean) => patchRow(i, (r) => {
-    if (!on) return { ...r, sports: r.sports.filter((x) => x !== sp) }
-    const currentSkill = r.skills[sp] || r.skill || 'casual'
-    return {
-      ...r,
-      sports: [...r.sports, sp],
-      skills: { ...r.skills, [sp]: currentSkill },
-      formats: { ...r.formats, [sp]: [sportFormats(sp)[0]] }
-    }
-  })
+  /** Ticking a sport starts with the sport's first format (singles, or team); the person can add doubles. */
+  const toggleSport = (i: number, sp: string, on: boolean) => patchRow(i, (r) => on
+    ? { ...r, sports: [...r.sports, sp], formats: { ...r.formats, [sp]: [sportFormats(sp)[0]] } }
+    : { ...r, sports: r.sports.filter((x) => x !== sp) })
   const toggleFormat = (i: number, sp: string, fmt: string, on: boolean) => patchRow(i, (r) => {
     const cur = r.formats[sp]?.length ? r.formats[sp] : [sportFormats(sp)[0]]
     const next = on ? [...new Set([...cur, fmt])] : cur.filter((f) => f !== fmt)
@@ -162,25 +119,10 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
     }, 60)
     setTimeout(() => setFlash(null), 1600)
   }
-  const addRow = () => {
-    const nextIdx = rows.length
-    setRows((rs) => [...rs, blankRow()])
-    // Auto-collapse earlier rows so the new row is close to the column header, and expand the new row
-    setExpandedGames((prev) => {
-      const next: Record<number, boolean> = {}
-      for (let j = 0; j < nextIdx; j++) next[j] = false
-      next[nextIdx] = true
-      return next
-    })
-    show(nextIdx)
-    setNote(`Person ${nextIdx + 1} added`)
-  }
+  const addRow = () => { setRows((rs) => [...rs, blankRow()]); show(rows.length); setNote(`Person ${rows.length + 1} added`) }
   const dup = (i: number) => {
-    const nextIdx = i + 1
     setRows((rs) => [...rs.slice(0, i + 1), { ...rs[i], sports: [...rs[i].sports], skills: { ...rs[i].skills }, formats: { ...rs[i].formats }, partners: {}, extra: { ...rs[i].extra }, name: '', mobile: '', email: '' }, ...rs.slice(i + 1)])
-    setExpandedGames((prev) => ({ ...prev, [i]: false, [nextIdx]: true }))
-    show(nextIdx)
-    setNote(`Person ${nextIdx + 1} duplicated: enter the new name`)
+    show(i + 1); setNote(`Person ${i + 1} duplicated: enter the new name`)
   }
   const del = (i: number) => {
     setRows((rs) => (rs.length > 1 ? rs.filter((_, j) => j !== i) : [blankRow()]))
@@ -225,55 +167,21 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
     if (!contact.waiver) cErrs.waiver = 'You must accept the waiver'
     setContactErrors(cErrs)
     if (first !== undefined) {
-      setFormError(`Please fix the highlighted errors for participant ${first + 1} before submitting.`)
       tableRef.current?.querySelector(`[data-row="${first}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
       return
     }
-    if (Object.keys(cErrs).length) {
-      setFormError('Please check the emergency contact details and injury waiver below.')
-      document.getElementById('emergency')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      return
-    }
+    if (Object.keys(cErrs).length) { document.getElementById('emergency')?.scrollIntoView({ block: 'center', behavior: 'smooth' }); return }
     setBusy(true)
     const first0 = rows[0]
-    const submissionPayload = {
-      ...contact,
-      token,
-      registrantName: first0.name.trim(),
-      registrantMobile: first0.mobile,
-      registrantEmail: first0.email.trim(),
-      submissionKey,
-    }
-
-    let res: SubmitResult | null = null
-    try {
-      res = await submit(submissionPayload, rows)
-    } catch (actionErr: unknown) {
-      console.warn('Server action submit failed, falling back to API endpoint:', actionErr)
-      try {
-        const apiRes = await fetch('/api/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slug, eventId, token, contact: submissionPayload, rows }),
-        })
-        res = (await apiRes.json()) as SubmitResult
-      } catch (fetchErr: unknown) {
-        console.error('API submission failed:', fetchErr)
-        setFormError(fetchErr instanceof Error ? fetchErr.message : 'A network error occurred while submitting. Please check your connection and try again.')
-      }
-    } finally {
-      setBusy(false)
-    }
-
-    if (!res) return
-
+    const res = await submit({ ...contact, registrantName: first0.name.trim(), registrantMobile: first0.mobile, registrantEmail: first0.email.trim(), submissionKey }, rows)
+    setBusy(false)
     if (res.ok) {
       try { localStorage.removeItem(key) } catch { /* ignore */ }
       router.push(`/c/${slug}/r/${res.token}?saved=1`)
       router.refresh()
       return
     }
-    setFormError(res.error || 'Please correct the highlighted issues and try again.')
+    setFormError(res.error ?? '')
     const ce = res.contactErrors ?? {}
     setContactErrors(ce)
     // The registrant is row one, so their contact problems belong on that row.
@@ -281,12 +189,6 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
     if (ce.registrantMobile || ce.registrantEmail || ce.registrantName)
       re[0] = { ...(re[0] ?? {}), ...(ce.registrantName ? { name: ce.registrantName } : {}), ...(ce.registrantMobile ? { mobile: ce.registrantMobile } : {}), ...(ce.registrantEmail ? { email: ce.registrantEmail } : {}) }
     setRowErrors(re)
-    const firstServerErr = Object.keys(re).map(Number).sort((x, y) => x - y)[0]
-    if (firstServerErr !== undefined) {
-      tableRef.current?.querySelector(`[data-row="${firstServerErr}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    } else if (Object.keys(ce).length) {
-      document.getElementById('emergency')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-    }
   }
 
   const err = (i: number, k: keyof ParticipantInput) => {
@@ -300,27 +202,10 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
       {k === 'email' && suggestEmail(rows[i].email) && <small role="status" className="wl">Did you mean <button type="button" className="linklike" onClick={() => set(i, 'email', suggestEmail(rows[i].email)!)}>{suggestEmail(rows[i].email)}</button>?</small>}
     </td>
   )
-  const defaultPlaceholders: Record<string, string> = {
-    name: 'Full name',
-    age: 'Age',
-    mobile: '10-digit mobile',
-    email: 'Email address',
-    accessibility: 'Special needs (optional)',
-  }
   const inp = (i: number, k: keyof ParticipantInput, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
-    <input
-      data-r={i}
-      data-c={k}
-      placeholder={props.placeholder ?? defaultPlaceholders[k]}
-      value={rows[i][k] as string}
-      onChange={(e) => set(i, k, e.target.value)}
-      onBlur={() => touch(`${i}:${k}`)}
-      onKeyDown={(e) => onKey(e, i, k)}
-      onPaste={k === 'name' ? (e) => onPaste(e, i) : undefined}
-      aria-label={i === 0 && k === 'name' ? 'Your name' : i === 0 ? `Your ${k}` : k}
-      aria-invalid={!!err(i, k)}
-      {...props}
-    />
+    <input data-r={i} data-c={k} value={rows[i][k] as string} onChange={(e) => set(i, k, e.target.value)} onBlur={() => touch(`${i}:${k}`)}
+      onKeyDown={(e) => onKey(e, i, k)} onPaste={k === 'name' ? (e) => onPaste(e, i) : undefined} aria-label={i === 0 && k === 'name' ? 'Your name' : i === 0 ? `Your ${k}` : k}
+      aria-invalid={!!err(i, k)} {...props} />
   )
   const sel = (i: number, k: keyof ParticipantInput, opts: readonly string[], blank = true) => (
     <select data-r={i} data-c={k} value={rows[i][k] as string} onChange={(e) => set(i, k, e.target.value)} onBlur={() => touch(`${i}:${k}`)} onKeyDown={(e) => onKey(e, i, k)} aria-label={k}>
@@ -332,22 +217,9 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
 
   return (
     <form onSubmit={onSubmit} noValidate>
-      <input name="website" tabIndex={-1} autoComplete="new-password" data-lpignore="true" data-form-type="other" aria-hidden="true" className="hp" value={contact.website ?? ''} onChange={(e) => setContact({ ...contact, website: e.target.value })} />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.25rem' }}>
-        <h2 style={{ margin: 0 }}>Participants</h2>
-        <details className="info-box" style={{ fontSize: '0.85rem' }}>
-          <summary style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: 'var(--color-primary)', fontWeight: 600 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '18px', height: '18px', borderRadius: '50%', background: 'var(--color-primary)', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>i</span>
-            Tips & Excel paste
-          </summary>
-          <div style={{ marginTop: '0.4rem', padding: '0.6rem 0.85rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', maxWidth: '32rem', color: 'var(--color-text-secondary)', lineHeight: 1.45, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
-            • <strong>First row is you</strong>: Primary contact for tickets and announcements.<br />
-            • <strong>Add family & guests</strong>: Anyone attending can be listed (even non-players). Mark Member or Guest.<br />
-            • <strong>Excel paste</strong>: Copy rows from a spreadsheet and paste directly into the first Name cell.
-          </div>
-        </details>
-      </div>
-      <p className="muted" style={{ margin: '0 0 1rem', fontSize: '0.9rem' }}>Row 1 is you (primary contact). Add everyone coming below.</p>
+      <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hp" value={contact.website ?? ''} onChange={(e) => setContact({ ...contact, website: e.target.value })} />
+      <h2>Participants</h2>
+      <p className="muted">The first row is you, the person registering: we use your mobile and email to reach you. Then add everyone else who is coming, including people who will not play a game. Mark each as Member or Guest; organisers verify this. You can paste rows copied from Excel into the first Name cell.</p>
       <table ref={tableRef} className="grid-table">
         <thead>
           <tr>
@@ -388,112 +260,56 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
             </tr>
             <tr className={`gamesrow${flash === i ? ' flash' : ''}`} data-games={i}>
               <td colSpan={gridCols} data-label="Games">
-                <div className="games-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div>
-                    <strong>Games for {r.name.trim() || (i === 0 ? 'you' : `person ${i + 1}`)}</strong>
-                    <span className="muted" style={{ marginLeft: '0.5rem' }}>{r.sports.length ? `${r.sports.length} chosen` : 'Not playing? Leave all unticked, that is fine.'}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn outline"
-                    style={{ padding: '0.2rem 0.65rem', fontSize: '0.8rem', cursor: 'pointer' }}
-                    onClick={() => setExpandedGames((prev) => ({ ...prev, [i]: !isGamesExpanded(i) }))}
-                    aria-expanded={isGamesExpanded(i)}
-                  >
-                    {isGamesExpanded(i) ? '▲ Hide games' : `▼ Choose games (${r.sports.length || 0})`}
-                  </button>
-                </div>
-                {isGamesExpanded(i) && (
-                  <div className="gamegrid" role="group" aria-label={`Games for person ${i + 1}`}>
-                    {sports.map((sp) => {
-                      const on = r.sports.includes(sp)
-                      const allowed = sportFormats(sp)
-                      const picked = r.formats[sp]?.length ? r.formats[sp] : [allowed[0]]
-                      const wantsPartner = on && (picked.includes('doubles') || picked.includes('team'))
-                      const level = r.skills[sp] || r.skill
-                      return (
-                        <div
-                          key={sp}
-                          className={`gamecard${on ? ' on' : ''}`}
-                          onClick={(e) => {
-                            const target = e.target as HTMLElement
-                            if (!target.closest('.gc-row') && !target.closest('.partner')) {
-                              toggleSport(i, sp, !on)
-                            }
-                          }}
-                        >
-                          <div
-                            className="gc-head"
-                            role="button"
-                            tabIndex={0}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleSport(i, sp, !on)
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === ' ' || e.key === 'Enter') {
-                                e.preventDefault()
-                                toggleSport(i, sp, !on)
-                              }
-                            }}
-                          >
-                            <input type="checkbox" className="sr-only" data-r={i} data-c={`sport-${sp}`} checked={on} onChange={() => {}} tabIndex={-1} />
-                            <Pic src={sportIcon(sp)} size={44} style={{ pointerEvents: 'none' }} />
-                            <span className="gc-name" style={{ pointerEvents: 'none' }}>{sp}{seatsLeft[sp] === 0 && <em className="wl"> waitlist</em>}<small>{on ? 'Playing' : 'Tap to join'}</small></span>
-                            <span className="gc-tick" aria-hidden="true" style={{ pointerEvents: 'none' }}>{on ? '✓' : '+'}</span>
+                <div className="games-head"><strong>Games for {r.name.trim() || (i === 0 ? 'you' : `person ${i + 1}`)}</strong><span className="muted">{r.sports.length ? `${r.sports.length} chosen` : 'Not playing? Leave all unticked, that is fine.'}</span></div>
+                <div className="gamegrid" role="group" aria-label={`Games for person ${i + 1}`}>
+                  {sports.map((sp) => {
+                    const on = r.sports.includes(sp)
+                    const allowed = sportFormats(sp)
+                    const picked = r.formats[sp]?.length ? r.formats[sp] : [allowed[0]]
+                    const wantsPartner = on && (picked.includes('doubles') || picked.includes('team'))
+                    const level = r.skills[sp] || r.skill
+                    return (
+                      <div key={sp} className={`gamecard${on ? ' on' : ''}`}>
+                        <label className="gc-head">
+                          <input type="checkbox" className="sr-only" data-r={i} data-c={`sport-${sp}`} checked={on} onChange={(e) => toggleSport(i, sp, e.target.checked)} />
+                          <Pic src={sportIcon(sp)} size={44} />
+                          <span className="gc-name">{sp}{seatsLeft[sp] === 0 && <em className="wl"> waitlist</em>}<small>{on ? 'Playing' : 'Tap to join'}</small></span>
+                          <span className="gc-tick" aria-hidden="true">{on ? '✓' : '+'}</span>
+                        </label>
+                        {on && columns.skill.show && (
+                          <div className="gc-row">
+                            <span className="gc-label">Skill level</span>
+                            <div className="seg" role="radiogroup" aria-label={`Skill level for ${sp}`}>
+                              {SKILLS.map((o) => (
+                                <label key={o} className={level === o ? 'on' : ''}>
+                                  <input type="radio" className="sr-only" name={`skill-${i}-${sp}`} data-r={i} data-c={`skill-${sp}`} value={o} checked={level === o}
+                                    onChange={() => patchRow(i, (x) => ({ ...x, skills: { ...x.skills, [sp]: o } }))} />{o}
+                                </label>
+                              ))}
+                            </div>
                           </div>
-                          {on && columns.skill.show && (
-                            <div className="gc-row" onClick={(e) => e.stopPropagation()}>
-                              <span className="gc-label">Skill level</span>
-                              <div className="seg" role="radiogroup" aria-label={`Skill level for ${sp}`}>
-                                {SKILLS.map((o) => (
-                                  <label
-                                    key={o}
-                                    className={level === o ? 'on' : ''}
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                      patchRow(i, (x) => ({ ...x, skills: { ...x.skills, [sp]: o } }))
-                                    }}
-                                  >
-                                    <input type="radio" className="sr-only" name={`skill-${i}-${sp}`} data-r={i} data-c={`skill-${sp}`} value={o} checked={level === o}
-                                      onChange={() => {}} tabIndex={-1} />{o}
-                                  </label>
-                                ))}
-                              </div>
+                        )}
+                        {on && allowed.length > 1 && (
+                          <div className="gc-row">
+                            <span className="gc-label">Plays</span>
+                            <div className="seg multi" role="group" aria-label={`How ${r.name || 'this person'} plays ${sp}`}>
+                              {allowed.map((f) => (
+                                <label key={f} className={picked.includes(f) ? 'on' : ''}>
+                                  <input type="checkbox" className="sr-only" aria-label={`${f} in ${sp}`} data-r={i} data-c={`fmt-${sp}-${f}`} checked={picked.includes(f)} onChange={(e) => toggleFormat(i, sp, f, e.target.checked)} />{f === 'singles' ? 'Singles' : f === 'doubles' ? 'Doubles' : 'Team'}
+                                </label>
+                              ))}
                             </div>
-                          )}
-                          {on && allowed.length > 1 && (
-                            <div className="gc-row" onClick={(e) => e.stopPropagation()}>
-                              <span className="gc-label">Plays</span>
-                              <div className="seg multi" role="group" aria-label={`How ${r.name || 'this person'} plays ${sp}`}>
-                                {allowed.map((f) => (
-                                  <label
-                                    key={f}
-                                    className={picked.includes(f) ? 'on' : ''}
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                      toggleFormat(i, sp, f, !picked.includes(f))
-                                    }}
-                                  >
-                                    <input type="checkbox" className="sr-only" aria-label={`${f} in ${sp}`} data-r={i} data-c={`fmt-${sp}-${f}`} checked={picked.includes(f)} onChange={() => {}} tabIndex={-1} />{f === 'singles' ? 'Singles' : f === 'doubles' ? 'Doubles' : 'Team'}
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {wantsPartner && (
-                            <input className="partner" data-r={i} data-c={`partner-${sp}`} maxLength={60} aria-label={picked.includes('team') ? `Team name for ${sp}` : `Partner for ${sp}`} value={r.partners[sp] ?? ''}
-                              placeholder={picked.includes('team') ? 'Team name (optional)' : "Partner's name or HR reference (optional)"}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => patchRow(i, (x) => ({ ...x, partners: { ...x.partners, [sp]: e.target.value } }))} />
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                          </div>
+                        )}
+                        {wantsPartner && (
+                          <input className="partner" data-r={i} data-c={`partner-${sp}`} maxLength={60} aria-label={picked.includes('team') ? `Team name for ${sp}` : `Partner for ${sp}`} value={r.partners[sp] ?? ''}
+                            placeholder={picked.includes('team') ? 'Team name (optional)' : "Partner's name or HR reference (optional)"}
+                            onChange={(e) => patchRow(i, (x) => ({ ...x, partners: { ...x.partners, [sp]: e.target.value } }))} />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
                 {err(i, 'sports') && <small role="alert" className="cellerr">{err(i, 'sports')}</small>}
                 {err(i, 'skill') && <small role="alert" className="cellerr">{err(i, 'skill')}</small>}
                 {err(i, 'partners') && <small role="alert" className="cellerr">{err(i, 'partners')}</small>}
@@ -511,22 +327,12 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
       </p>
 
       <fieldset className="card" id="emergency">
-        <legend style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-          <span>Emergency contact</span>
-          <details className="info-box" style={{ display: 'inline-block', fontSize: '0.8rem', fontWeight: 'normal' }}>
-            <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', color: 'var(--color-primary)' }} title="Click for details">
-              <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', borderRadius: '50%', background: 'var(--color-primary)', color: '#fff', fontSize: '10px', fontWeight: 'bold' }}>i</span>
-            </summary>
-            <div style={{ position: 'absolute', zIndex: 10, marginTop: '0.3rem', padding: '0.5rem 0.75rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '6px', maxWidth: '22rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '0.8rem', color: 'var(--color-text-secondary)', lineHeight: 1.4 }}>
-              Must be someone <em>not</em> listed on this registration, who can be called in case of an emergency at the venue.
-            </div>
-          </details>
-        </legend>
-        <p className="muted" style={{ marginTop: 0, fontSize: '0.85rem' }}>Someone to call in an emergency (must not be listed on this registration).</p>
+        <legend>Emergency contact</legend>
+        <p className="muted" style={{ marginTop: 0 }}>Someone we can call if anyone on this registration is hurt. They must not be on this registration, because everyone on it will be at the venue.</p>
         <div className="fields">
-          <label>Emergency contact name<input value={contact.emergencyName} onChange={(e) => { const v = e.target.value; setContact((c) => ({ ...c, emergencyName: v })); try { localStorage.setItem('hearth_last_emergency', JSON.stringify({ name: v, mobile: contact.emergencyMobile })) } catch {} touchSoon('em:name') }} onBlur={() => touch('em:name')} aria-invalid={!!((showErrors || touched.has('em:name')) && emName)} />
+          <label>Emergency contact name<input value={contact.emergencyName} onChange={(e) => { setContact({ ...contact, emergencyName: e.target.value }); touchSoon('em:name') }} onBlur={() => touch('em:name')} aria-invalid={!!((showErrors || touched.has('em:name')) && emName)} />
             {(showErrors || touched.has('em:name')) && (emName || contactErrors.emergencyName) && <small role="alert" className="cellerr">{emName ?? contactErrors.emergencyName}</small>}</label>
-          <label>Emergency contact mobile<input inputMode="tel" value={contact.emergencyMobile} onChange={(e) => { const v = e.target.value; setContact((c) => ({ ...c, emergencyMobile: v })); try { localStorage.setItem('hearth_last_emergency', JSON.stringify({ name: contact.emergencyName, mobile: v })) } catch {} touchSoon('em:mobile') }} onBlur={() => touch('em:mobile')} aria-invalid={!!((showErrors || touched.has('em:mobile')) && emMobile)} />
+          <label>Emergency contact mobile<input inputMode="tel" value={contact.emergencyMobile} onChange={(e) => { setContact({ ...contact, emergencyMobile: e.target.value }); touchSoon('em:mobile') }} onBlur={() => touch('em:mobile')} aria-invalid={!!((showErrors || touched.has('em:mobile')) && emMobile)} />
             {(showErrors || touched.has('em:mobile')) && (emMobile || contactErrors.emergencyMobile) && <small role="alert" className="cellerr">{emMobile ?? contactErrors.emergencyMobile}</small>}</label>
         </div>
       </fieldset>
@@ -536,17 +342,8 @@ export default function RegistrationForm({ slug, eventId, sports, columns, ages 
         {waiver}
       </label>
       {contactErrors.waiver && <small role="alert" className="cellerr">{contactErrors.waiver}</small>}
-      {formError && (
-        <div role="alert" style={{ background: 'color-mix(in srgb, var(--color-error, #b91c1c) 12%, var(--color-surface, #fff))', border: '1.5px solid var(--color-error, #b91c1c)', borderRadius: '8px', padding: '0.75rem 1rem', margin: '1rem 0', color: 'var(--color-error, #b91c1c)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.95rem' }}>
-          <span style={{ fontSize: '1.25rem' }}>⚠️</span>
-          <span>{formError}</span>
-        </div>
-      )}
-      <p style={{ marginTop: '1.25rem' }}>
-        <button className="btn" disabled={busy || !ready} style={{ minWidth: '13rem' }}>
-          {busy ? 'Saving registration…' : submitLabel}
-        </button>
-      </p>
+      {formError && <p role="alert" className="cellerr">{formError}</p>}
+      <p><button className="btn" disabled={busy || !ready}>{busy ? 'Saving…' : submitLabel}</button></p>
     </form>
   )
 }

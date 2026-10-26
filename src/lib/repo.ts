@@ -247,14 +247,6 @@ export function findTokenByRefAndMobile(cid: number, ref: string, mobile: string
   const r = one<{ token: string }>('select token from registration where community_id = ? and ref = ? and registrant_mobile = ?', cid, ref.trim().toUpperCase(), mobile)
   return r?.token ?? null
 }
-export function findTokenByMobile(cid: number, mobile: string): string | null {
-  const norm = mobile.replace(/\D/g, '').slice(-10)
-  const r = one<{ token: string }>(
-    "select token from registration where community_id = ? and (registrant_mobile = ? or substr(registrant_mobile, -10) = ?) and status != 'cancelled' order by updated_at desc limit 1",
-    cid, mobile, norm
-  )
-  return r?.token ?? null
-}
 export const getRegistrationByToken = (token: string) => {
   const r = one<RegistrationRow>('select * from registration where token = ?', token)
   return r

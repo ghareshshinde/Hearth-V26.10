@@ -62,43 +62,8 @@ async function savedOrError<T extends { ok: boolean }>(r: T): Promise<T | { ok: 
   }
 }
 
-export async function editRegistration(
-  tokenOrPayload: string | (Contact & { token?: string }),
-  contactOrRows?: Contact | ParticipantInput[],
-  maybeRows?: ParticipantInput[]
-): Promise<SubmitResult> {
-  let token = ''
-  let contact: Contact
-  let rows: ParticipantInput[]
-
-  if (typeof tokenOrPayload === 'string') {
-    token = tokenOrPayload.trim()
-    contact = contactOrRows as Contact
-    rows = (maybeRows ?? []) as ParticipantInput[]
-  } else {
-    contact = tokenOrPayload as (Contact & { token?: string })
-    token = String((contact as any)?.token ?? '').trim()
-    rows = (contactOrRows ?? []) as ParticipantInput[]
-  }
-
-  if (!token && (contact as any)?.token) {
-    token = String((contact as any).token).trim()
-  }
-
-  let reg = token ? repo.getRegistrationByToken(token) : null
-  if (!reg && token) {
-    try {
-      const decoded = decodeURIComponent(token)
-      if (decoded !== token) reg = repo.getRegistrationByToken(decoded)
-    } catch { /* ignore */ }
-  }
-  if (!reg && contact?.registrantMobile) {
-    const foundToken = repo.findTokenByMobile(1, normalizeMobile(contact.registrantMobile))
-    if (foundToken) {
-      reg = repo.getRegistrationByToken(foundToken)
-    }
-  }
-
+export async function editRegistration(token: string, contact: Contact, rows: ParticipantInput[]): Promise<SubmitResult> {
+  const reg = repo.getRegistrationByToken(token)
   const ev = reg && repo.getEvent(reg.community_id, reg.event_id)
   if (!reg || !ev) return { ok: false, error: 'Registration not found' }
   const r = repo.updateRegistration(ev, reg, contact, rows)

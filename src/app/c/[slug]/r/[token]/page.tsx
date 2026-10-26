@@ -60,12 +60,10 @@ export default async function MyRegistration({ params, searchParams }: { params:
         {editable ? (
           <>
             <RegistrationForm
-              key={`reg-edit-${reg.id}-${token}`}
-              token={token}
               slug={slug} eventId={ev.id} sports={JSON.parse(ev.sports)} columns={columnConfig(ev.config)} ages={settings.ages} diets={settings.diets} questions={settings.questions} waiver={settings.waiver} emailRequired={settings.contactEmailRequired}
               seatsLeft={seatsLeft(ev)} draftKey={`edit-${reg.id}`}
               initialRows={rowsForEdit(people, reg)}
-              initialContact={{ registrantName: reg.registrant_name || '', registrantMobile: reg.registrant_mobile || '', registrantEmail: reg.registrant_email || '', emergencyName: reg.emergency_name || '', emergencyMobile: reg.emergency_mobile || '', waiver: true }}
+              initialContact={{ registrantName: reg.registrant_name, registrantMobile: reg.registrant_mobile, registrantEmail: reg.registrant_email, emergencyName: reg.emergency_name, emergencyMobile: reg.emergency_mobile, waiver: true }}
               submit={editRegistration.bind(null, token)} submitLabel="Save changes"
             />
             <form action={cancelOwnRegistration.bind(null, token)}><button className="btn outline">Cancel registration</button></form>
