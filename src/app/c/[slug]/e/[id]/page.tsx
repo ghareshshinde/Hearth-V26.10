@@ -10,6 +10,7 @@ import ShareButton from '@/components/ShareButton'
 import RulesView from '@/components/RulesView'
 import ItineraryView from '@/components/ItineraryView'
 import Pic from '@/components/Pic'
+import PageHero from '@/components/PageHero'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params
@@ -36,35 +37,20 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const open = isOpen(ev)
   return (
     <>
-      <section className="hero">
-        <Pic className="bg" src="/img/hero.svg" width={1200} height={460} />
-        <div className="inner">
-          <div style={{ flex: '3 1 22rem', display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
-            {c.brand.logo && <Pic src={c.brand.logo} size={72} alt={c.brand.name} style={{ borderRadius: '50%', background: '#fff' }} />}
-            <span className="badge" style={{ alignSelf: 'flex-start' }}>{open ? 'Registration open' : 'Registration closed'}</span>
-            <h1>{ev.title}</h1>
-            {c.brand.tagline && <p style={{ margin: 0, fontSize: '1.2rem' }}>{c.brand.tagline}</p>}
-            <div style={{ display: 'flex', gap: '.75rem', flexWrap: 'wrap' }}>
-              {open && <Link className="btn gold" href={`/c/${slug}/e/${id}/register`}>Register your family</Link>}
-              <a className="btn ghost" href={`/c/${slug}/e/${id}/calendar.ics`}>Add to calendar</a>
-              <ShareButton title={ev.title} className="btn ghost" />
-            </div>
-            <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-              {sports.map((s) => <Pic key={s} src={sportIcon(s)} size={52} alt={s} />)}
-            </div>
-          </div>
-          <div style={{ flex: '1 1 10rem', display: 'flex', justifyContent: 'center' }}><Pic src="/img/trophy.svg" width={150} height={192} /></div>
-        </div>
-      </section>
+      <PageHero
+        logo={c.brand.logo} by={c.brand.name === 'Hearth' ? c.name : c.brand.name} title={ev.title} sports={sports}
+        facts={[{ icon: 'when', text: formatIst(ev.starts_at) }, { icon: 'where', text: ev.venue }, ...(ev.cutoff_at ? [{ icon: 'clock' as const, text: `Register and edit until ${formatIst(ev.cutoff_at)}`, warm: true }] : [])]}
+        actions={<>
+          {open ? <Link className="btn gold" href={`/c/${slug}/e/${id}/register`}>Register your family</Link> : <span className="badge">Registration closed</span>}
+          <a className="btn ghost" href={`/c/${slug}/e/${id}/calendar.ics`}>Add to calendar</a>
+          <ShareButton title={ev.title} className="btn ghost" />
+          {ev.map_url && <a className="btn ghost" href={ev.map_url} target="_blank" rel="noreferrer">Open map</a>}
+        </>}
+      />
       <main>
-        <div className="facts">
-          <div className="fact"><small>When</small><strong>{formatIst(ev.starts_at)}</strong></div>
-          <div className="fact"><small>Where</small><strong>{ev.venue}</strong> {ev.map_url && <a href={ev.map_url} target="_blank" rel="noreferrer">Map</a>}</div>
-          {ev.cutoff_at && <div className="fact"><small>Register and edit until</small><strong>{formatIst(ev.cutoff_at)}</strong></div>}
-        </div>
         {ev.description && <p style={{ whiteSpace: 'pre-wrap' }}>{ev.description}</p>}
 
-        <ItineraryView items={settings.itinerary} startIso={ev.starts_at} />
+        <ItineraryView items={settings.itinerary} startIso={ev.starts_at} image="/img/celebrate.svg" />
 
         <h2>Pick your games</h2>
         <div className="tiles">

@@ -32,6 +32,9 @@ describe('branding', () => {
     expect(brandingToCss(resolveBranding({ darkColors: null }))).toMatch(/^:root:root\{/)
     expect(brandingToCss(resolveBranding({}))).toMatch(/^:root\{/)
   })
+  it('density is a unitless number so calc(1.5rem*var(--space)) stays valid', () => {
+    expect(brandingToCss(resolveBranding({}))).toMatch(/--space:1\}/)
+  })
   it('strips unsafe characters from font names', () => {
     const css = brandingToCss(resolveBranding({ fonts: { heading: 'Evil;}body{x:y' } }))
     expect(css).not.toContain('}body{')

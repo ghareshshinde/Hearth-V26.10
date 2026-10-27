@@ -31,6 +31,7 @@ type Props = {
 }
 
 const DRAFT_DAYS = 7
+const untouched = (rows: ParticipantInput[]) => rows.every((r) => JSON.stringify({ ...blankRow(), ...r }) === JSON.stringify(blankRow()))
 const NO_AGES = {}
 const NO_DIETS: string[] = []
 const NO_QUESTIONS: Question[] = []
@@ -67,7 +68,7 @@ export default function RegistrationForm({ slug, eventId, sports, rules = {}, co
     if (initialRows) return
     try {
       const d = JSON.parse(localStorage.getItem(key) ?? 'null')
-      if (d && Date.now() - d.at < DRAFT_DAYS * 86400_000) {
+      if (d && Date.now() - d.at < DRAFT_DAYS * 86400_000 && !untouched(d.rows)) {
         // localStorage exists only in the browser, so restoring must happen after mount.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setRows((d.rows as ParticipantInput[]).map((r) => ({ ...blankRow(), ...r }))); setOpen(new Set([d.rows.length - 1])); setContact(d.contact); setDraftNote('Draft restored')
@@ -77,7 +78,7 @@ export default function RegistrationForm({ slug, eventId, sports, rules = {}, co
   useEffect(() => {
     if (initialRows) return
     const t = setTimeout(() => {
-      try { localStorage.setItem(key, JSON.stringify({ at: Date.now(), rows, contact })) } catch { /* ignore */ }
+      try { if (untouched(rows)) localStorage.removeItem(key); else localStorage.setItem(key, JSON.stringify({ at: Date.now(), rows, contact })) } catch { /* ignore */ }
     }, 400)
     return () => clearTimeout(t)
   }, [rows, contact, key, initialRows])

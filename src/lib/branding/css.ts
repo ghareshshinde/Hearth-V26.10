@@ -12,7 +12,7 @@ export function brandingToCss(b: Branding): string {
   const root =
     `${b.darkColors ? ':root' : ':root:root'}{${vars(b.colors)};--font-heading:${safeFont(b.fonts.heading)},${safeFont(b.fonts.indic)},sans-serif;` +
     `--font-body:${safeFont(b.fonts.body)},${safeFont(b.fonts.indic)},sans-serif;--base-size:${b.baseSizePx}px;` +
-    `--radius:${b.radiusPx}px;--space:${b.density === 'compact' ? 0.75 : 1}rem}`
+    `--radius:${b.radiusPx}px;--space:${b.density === 'compact' ? 0.75 : 1}}`
   if (!b.darkColors) return root
   const dark = vars(b.darkColors)
   return `${root}@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){${dark}}}:root[data-theme="dark"]{${dark}}`

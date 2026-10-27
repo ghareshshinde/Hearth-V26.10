@@ -372,3 +372,36 @@ fieldset.card{border-radius:calc(var(--radius)*1.4)}
   .itin-body.with-img{grid-template-columns:1fr}
   .subbar .cta{width:100%}
 }
+
+/* Shared page header actions, event cards, admin */
+.rh-actions{display:flex;flex-wrap:wrap;gap:.75rem}
+.rhero+main{padding-top:2rem}
+.ecard{background:var(--color-surface);border:1px solid var(--color-border);border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(17,24,39,.06);display:flex;flex-direction:column}
+.ec-img{background:color-mix(in srgb,var(--color-primary) 9%,var(--color-surface));display:grid;place-items:center;height:11rem}
+.ec-img img{height:100%;width:auto;max-width:100%;object-fit:contain}
+.ec-body{padding:1.1rem 1.25rem 1.4rem;display:flex;flex-direction:column;gap:.5rem;align-items:flex-start}
+.ec-body h3{margin:0;font-size:1.3rem}
+.ec-body p{margin:0}
+.tile{box-shadow:0 2px 10px rgba(17,24,39,.06)}
+.step .pic{background:color-mix(in srgb,var(--color-primary) 9%,var(--color-surface))}
+main.wide{max-width:80rem}
+
+/* Admin console */
+.ahead{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.ahead img{border-radius:50%;background:#fff;border:2px solid var(--color-border)}
+.ahead h1{margin:0;font-size:1.8rem}
+.ahead p{margin:0}
+.ahead .btn{margin-left:auto}
+.anav{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1.5rem}
+.anav a,.anav button{display:inline-flex;align-items:center;min-height:40px;padding:0 1rem;border:1px solid var(--color-border);border-radius:999px;background:var(--color-surface);color:var(--color-text-primary);text-decoration:none;font-weight:500;font-size:.95rem}
+.anav a:hover,.anav button:hover{border-color:var(--color-primary);color:var(--color-primary)}
+.anav form{display:inline}
+.acard{margin-bottom:1.25rem;padding:1.5rem;border-radius:16px;box-shadow:0 2px 10px rgba(17,24,39,.06)}
+.ahd{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.ahd h2{margin:0;font-size:1.5rem}
+.ahd p{margin:.25rem 0 0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(8rem,1fr));gap:.75rem;margin-bottom:1rem}
+.kpi{background:color-mix(in srgb,var(--color-primary) 6%,var(--color-surface));border-radius:12px;padding:.8rem 1rem;display:flex;flex-direction:column}
+.kpi b{font-size:1.7rem;line-height:1.1;color:var(--color-primary)}
+.kpi span{font-size:.8rem;color:var(--color-text-secondary)}
+.aact{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-top:1.25rem}
