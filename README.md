@@ -7,12 +7,7 @@ Multi-tenant community platform. Source of truth: `PRD.md`, including its **Alte
 npm install
 npm run dev          # http://localhost:3000, demo data and admin password "change-me" in dev
 ```
-Production: set `ADMIN_PASSWORD` and `SESSION_SECRET` (see `.env.example`), mount a volume for the SQLite file (`DATABASE_PATH`), or use the Dockerfile:
-`docker build -t hearth . && docker run -p 3000:3000 -v hearth-data:/data -e ADMIN_PASSWORD=... -e SESSION_SECRET=... hearth`
-SQLite means a single instance with a persistent disk (Fly volume, Railway volume, a VPS). It will not work on Vercel's ephemeral filesystem.
 
-## Google Cloud (Cloud Run)
-The app saves a snapshot to a Cloud Storage bucket after every change and restores it on start, so it works without a persistent disk. Run one instance. Steps, settings and checks are in [docs/DEPLOY_GOOGLE_CLOUD.md](docs/DEPLOY_GOOGLE_CLOUD.md).
 
 ## Admin sign-in
 `/c/<slug>/admin` with the single admin password (`ADMIN_PASSWORD` the first time the database is created, `change-me` in development). Change it under Admin > Change password. Forgotten: start once with `RESET_ADMIN_PASSWORD=true` and a new `ADMIN_PASSWORD`.
@@ -58,7 +53,3 @@ Admins and sports admins post at `/c/jsg/staff/announce`. Messages scroll along 
 ## Live board and feedback
 
 Open `/c/jsg/e/1/board` on the projector. Feedback links appear on each registration page once the event starts; admins manage it at `/c/jsg/admin/events/1/feedback`.
-
-## Load test
-
-`node scripts/loadtest.mjs http://localhost:3100 300 300` replays a real browser submission for 300 families (1,200 people) at once, each with its own connection address and key. On the development machine (one Node process, production build): 0 failures, 301 registrations and 1,201 people saved, about 2 seconds in total, and 300 simultaneous page views of the event page, results and board each answered in under 4 seconds. Re-run it against your Cloud Run URL after deploying.
