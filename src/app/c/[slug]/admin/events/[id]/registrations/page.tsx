@@ -48,7 +48,7 @@ export default async function Registrations({ params, searchParams }: { params: 
             <select name="action">
               <option value="verify">Mark verified</option><option value="unverify">Clear verified</option>
               <option value="confirm">Approve (or reinstate) registration</option><option value="reject">Reject registration (QR stops working)</option><option value="cancel">Cancel registration (QR stops working)</option>
-              <option value="member">Set as JSG Member</option><option value="guest_member">Set as JSG Guest Member</option><option value="guest">Set as Guest</option><option value="promote">Move off waitlist</option>
+              <option value="member">Set as JSG Member</option><option value="guest_member">Set as JSG Guest Member</option><option value="guest">Set as Guest</option><option value="donation_on">Ask for donation (approve with payment)</option><option value="donation_off">No donation (approve without payment)</option><option value="promote">Move off waitlist</option>
             </select>
             <input name="note" placeholder="Reason or note (shown to the registrant on rejection)" aria-label="Reason" style={{ minWidth: '16rem' }} />
             <ConfirmButton message="Apply this action to all selected rows?">Apply to selected</ConfirmButton>
@@ -72,7 +72,7 @@ export default async function Registrations({ params, searchParams }: { params: 
                   <td><EditableCell slug={slug} id={r.id} field="tshirt" value={r.tshirt} options={['', ...TSHIRTS]} /></td>
                   <td><EditableCell slug={slug} id={r.id} field="accessibility" value={r.accessibility} /></td>
                   {questions.map((q) => <td key={q.id}>{extraOf(r)[q.id] ?? ''}</td>)}
-                  <td><EditableCell slug={slug} id={r.id} field="kind" value={r.category || r.kind} options={[...KINDS]} labels={KIND_LABEL} /></td>
+                  <td><EditableCell slug={slug} id={r.id} field="kind" value={r.category || r.kind} options={[...KINDS]} labels={KIND_LABEL} /><small className="muted" style={{ display: 'block' }}>{r.kind === 'guest' ? 'donation asked' : 'no donation'}</small></td>
                   <td>{r.verified ? 'Yes' : 'No'}</td><td>{r.checked_in_at ? formatIst(r.checked_in_at, { timeStyle: 'short' }) : ''}{r.source === 'spot' ? ' (walk-in)' : ''}</td><td><span className="tag">{r.reg_state}</span>{r.reg_note && <small className="muted" style={{ display: 'block' }}>{r.reg_note}</small>}</td>
                   <td>{r.registrant_name}<br />{r.registrant_mobile}</td>
                 </tr>

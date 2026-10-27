@@ -498,13 +498,13 @@ export function adminEditParticipant(cid: number, id: number, field: EditableFie
   const v = validateRow(row, JSON.parse(ev.sports), columnConfig(ev.config), eventSettings(ev.config).ages, eventSettings(ev.config).diets)
   if (!v.ok && v.errors[field]) return { ok: false as const, error: v.errors[field] }
   const stored = field === 'sports' ? JSON.stringify(row.sports) : field === 'age' ? Number(value) : field === 'mobile' && v.value ? v.value.mobile : value
-  if (field === 'kind') db().prepare(`update participant set kind = ?, category = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') where community_id = ? and id = ?`).run(feeKind(value), value, cid, id)
+  if (field === 'kind') db().prepare(`update participant set category = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') where community_id = ? and id = ?`).run(value, cid, id)
   else db().prepare(`update participant set ${field} = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') where community_id = ? and id = ?`).run(stored, cid, id)
   audit(cid, actor, 'participant.edited', String(id), { field, before, after: String(stored) })
   return { ok: true as const }
 }
 
-export type BulkAction = 'verify' | 'unverify' | 'confirm' | 'reject' | 'cancel' | 'member' | 'guest_member' | 'guest' | 'promote'
+export type BulkAction = 'verify' | 'unverify' | 'confirm' | 'reject' | 'cancel' | 'member' | 'guest_member' | 'guest' | 'donation_on' | 'donation_off' | 'promote'
 export function bulkAction(cid: number, ids: number[], action: BulkAction, actor: string, note = '') {
   if (!ids.length) return 0
   const d = db()
@@ -516,7 +516,9 @@ export function bulkAction(cid: number, ids: number[], action: BulkAction, actor
     else if (action === 'promote')
       d.prepare(`update participant set waitlist = '[]' where community_id = ? and id in (${ph})`).run(cid, ...ids)
     else if (action === 'member' || action === 'guest_member' || action === 'guest')
-      d.prepare(`update participant set kind = ?, category = ? where community_id = ? and id in (${ph})`).run(feeKind(action), action, cid, ...ids)
+      d.prepare(`update participant set category = ? where community_id = ? and id in (${ph})`).run(action, cid, ...ids)
+    else if (action === 'donation_on' || action === 'donation_off')
+      d.prepare(`update participant set kind = ? where community_id = ? and id in (${ph})`).run(action === 'donation_on' ? 'guest' : 'member', cid, ...ids)
     else {
       const regs = all<{ registration_id: number }>(`select distinct registration_id from participant where community_id = ? and id in (${ph})`, cid, ...ids)
       for (const { registration_id } of regs) {

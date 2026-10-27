@@ -166,7 +166,7 @@ export async function editParticipantAction(slug: string, id: number, field: rep
 export async function bulkActionForm(slug: string, eventId: number, form: FormData) {
   const c = await adminCtx(slug, 'event', { eventId })
   const action = String(form.get('action')) as repo.BulkAction
-  if (!['verify', 'unverify', 'confirm', 'reject', 'cancel', 'member', 'guest_member', 'guest', 'promote'].includes(action)) return
+  if (!['verify', 'unverify', 'confirm', 'reject', 'cancel', 'member', 'guest_member', 'guest', 'donation_on', 'donation_off', 'promote'].includes(action)) return
   const ids = form.getAll('ids').map(Number).filter((n) => Number.isInteger(n) && repo.participantEvent(c.id, n) === eventId)
   repo.bulkAction(c.id, ids, action, 'admin', String(form.get('note') ?? '').trim())
   await persist()
