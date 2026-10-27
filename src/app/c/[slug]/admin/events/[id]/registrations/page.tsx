@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireAccess } from '@/lib/session'
 import { filterRows, getEvent, listRows, stats, type Filters } from '@/lib/repo'
-import { bulkActionForm } from '@/app/actions'
+import { bulkActionForm, decideRegistrationAction } from '@/app/actions'
 import { GENDERS, TSHIRTS, eventSettings, extraOf, skillsOf } from '@/lib/registration/rules'
 import { formatIst } from '@/lib/time'
 import EditableCell from '@/components/EditableCell'
@@ -43,6 +43,7 @@ export default async function Registrations({ params, searchParams }: { params: 
 
       <form action={bulkActionForm.bind(null, slug, ev.id)}>
         <input type="hidden" name="qs" value={qs} />
+        <input type="hidden" name="back" value={`${base}/registrations${qs ? `?${qs}` : ''}`} />
         <p>
           <label style={{ flexDirection: 'row', gap: '.5rem', alignItems: 'center' }}>With selected:
             <select name="action">
@@ -50,13 +51,13 @@ export default async function Registrations({ params, searchParams }: { params: 
               <option value="confirm">Approve (or reinstate) registration</option><option value="reject">Reject registration (QR stops working)</option><option value="cancel">Cancel registration (QR stops working)</option>
               <option value="member">Set as member</option><option value="guest">Set as guest</option><option value="promote">Move off waitlist</option>
             </select>
-            <input name="note" placeholder="Reason or note (shown to the registrant on rejection)" aria-label="Reason" style={{ minWidth: '16rem' }} />
+            <input name="note" placeholder="Reason (shown to the registrant when you reject)" aria-label="Reason" style={{ minWidth: '16rem' }} />
             <ConfirmButton message="Apply this action to all selected rows?">Apply to selected</ConfirmButton>
           </label>
         </p>
         <div style={{ overflowX: 'auto' }}>
           <table className="data">
-            <thead><tr><th /><th>Ref</th><th>Registered (IST)</th><th>Name</th><th>Age</th><th>Gender</th><th>Mobile</th><th>Sports</th><th>Skill</th><th>Diet</th><th>T-shirt</th><th>Access.</th>{questions.map((q) => <th key={q.id}>{q.label}</th>)}<th>Type</th><th>Verified</th><th>Arrived</th><th>Status</th><th>Registrant</th></tr></thead>
+            <thead><tr><th /><th>Ref</th><th>Registered (IST)</th><th>Name</th><th>Age</th><th>Gender</th><th>Mobile</th><th>Sports</th><th>Skill</th><th>Diet</th><th>T-shirt</th><th>Access.</th>{questions.map((q) => <th key={q.id}>{q.label}</th>)}<th>Type</th><th>Arrived</th><th>Approval</th><th>Registrant</th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} style={r.reg_status === 'cancelled' ? { opacity: 0.5 } : undefined}>
@@ -72,8 +73,16 @@ export default async function Registrations({ params, searchParams }: { params: 
                   <td><EditableCell slug={slug} id={r.id} field="tshirt" value={r.tshirt} options={['', ...TSHIRTS]} /></td>
                   <td><EditableCell slug={slug} id={r.id} field="accessibility" value={r.accessibility} /></td>
                   {questions.map((q) => <td key={q.id}>{extraOf(r)[q.id] ?? ''}</td>)}
-                  <td><EditableCell slug={slug} id={r.id} field="kind" value={r.kind} options={['member', 'guest']} /></td>
-                  <td>{r.verified ? 'Yes' : 'No'}</td><td>{r.checked_in_at ? formatIst(r.checked_in_at, { timeStyle: 'short' }) : ''}{r.source === 'spot' ? ' (walk-in)' : ''}</td><td><span className="tag">{r.reg_state}</span>{r.reg_note && <small className="muted" style={{ display: 'block' }}>{r.reg_note}</small>}</td>
+                  <td><EditableCell slug={slug} id={r.id} field="kind" value={r.kind} options={['member', 'guest']} />{r.verified ? <small className="muted" style={{ display: 'block' }}>verified</small> : null}</td>
+                  <td>{r.checked_in_at ? formatIst(r.checked_in_at, { timeStyle: 'short' }) : ''}{r.source === 'spot' ? ' (walk-in)' : ''}</td><td>
+                    <span className={`tag${r.reg_state === 'approved' ? ' on' : ''}`}>{r.reg_state}</span>{r.reg_note && <small className="muted" style={{ display: 'block' }}>{r.reg_note}</small>}
+                    {r.reg_state !== 'cancelled' && (
+                      <span className="decide">
+                        {(r.reg_state === 'pending' || r.reg_state === 'rejected') && <ConfirmButton small message={`Approve registration ${r.reg_ref}? This covers everyone registered together with ${r.name}.`} formAction={decideRegistrationAction.bind(null, slug, ev.id, r.registration_id, 'approve')}>Approve</ConfirmButton>}
+                        {(r.reg_state === 'pending' || r.reg_state === 'approved') && <ConfirmButton small secondary message={`Reject registration ${r.reg_ref}? This covers everyone registered together with ${r.name}, and their QR stops working.`} formAction={decideRegistrationAction.bind(null, slug, ev.id, r.registration_id, 'reject')}>Reject</ConfirmButton>}
+                      </span>
+                    )}
+                  </td>
                   <td>{r.registrant_name}<br />{r.registrant_mobile}</td>
                 </tr>
               ))}

@@ -76,24 +76,6 @@ export async function cancelOwnRegistration(token: string) {
   revalidatePath('/c')
 }
 
-// ---------- admin auth ----------
-const attempts = new Map<string, { n: number; until: number }>()
-export async function adminLogin(slug: string, _prev: { error?: string } | undefined, form: FormData) {
-  const c = repo.getCommunityBySlug(slug)
-  const ip = (await headers()).get('x-forwarded-for') ?? 'local'
-  const key = `${slug}:${ip}`
-  const a = attempts.get(key)
-  if (a && a.n >= 5 && a.until > Date.now()) return { error: 'Too many attempts. Try again in a few minutes.' }
-  if (!c || !verifyPassword(String(form.get('password') ?? ''), c.admin_hash)) {
-    attempts.set(key, { n: (a && a.until > Date.now() ? a.n : 0) + 1, until: Date.now() + 5 * 60_000 })
-    repo.audit(c?.id ?? null, 'anonymous', 'admin.login_failed', slug)
-    return { error: 'Incorrect password' }
-  }
-  attempts.delete(key)
-  ;(await cookies()).set(cookieName(slug), makeSession(slug), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 12 * 3600 })
-  repo.audit(c.id, 'admin', 'admin.login', slug)
-  redirect(`/c/${slug}/admin`)
-}
 /** First run with no ADMIN_PASSWORD set: the first visitor chooses it, once. After that this does nothing. */
 export async function adminSetup(slug: string, _prev: { error?: string } | undefined, form: FormData) {
   const c = repo.getCommunityBySlug(slug)
@@ -217,7 +199,9 @@ export async function decideRegistrationAction(slug: string, eventId: number, re
   else repo.rejectRegistration(c.id, registrationId, 'admin', note)
   await persist()
   revalidatePath(`/c/${slug}/admin`)
-  redirect(`/c/${slug}/admin/events/${eventId}/review`)
+  const back = String(form.get('back') ?? '')
+  const home = `/c/${slug}/admin/events/${eventId}/`
+  redirect(back.startsWith(home) && !back.includes('//') ? back : `${home}review`)
 }
 
 export async function retryEmailsAction(slug: string) {

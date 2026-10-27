@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { brandingToCss } from '@/lib/branding/css'
-import { requireCommunity } from '@/lib/session'
+import { getActor, requireCommunity } from '@/lib/session'
 import { liveAnnouncements } from '@/lib/announcements'
 import Ticker from '@/components/Ticker'
 import RoleBar from '@/components/RoleBar'
@@ -17,6 +17,7 @@ export default async function CommunityLayout({ children, params }: { children: 
   const { slug } = await params
   const c = await requireCommunity(slug)
   const name = c.brand.name === 'Hearth' ? c.name : c.brand.name
+  const signedIn = !!(await getActor(slug))
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: brandingToCss(c.brand) }} />
@@ -25,8 +26,8 @@ export default async function CommunityLayout({ children, params }: { children: 
           {c.brand.logo && <Image src={c.brand.logo} alt="" width={44} height={44} style={{ borderRadius: '50%' }} />}
           <strong>{name}</strong>
         </Link>
+        {signedIn ? <RoleBar slug={slug} communityId={c.id} /> : <Link className="site-login" href={`/c/${slug}/admin/login`}>Admin login</Link>}
       </header>
-      <RoleBar slug={slug} communityId={c.id} name={name} />
       {children}
       <Ticker slug={slug} initial={liveAnnouncements(c.id).map(({ id, message, level }) => ({ id, message, level }))} />
     </>

@@ -11,7 +11,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
   const { slug, token } = await params
   const c = getCommunityBySlug(slug)
   const s = c && staffByInvite(c.id, token)
-  if (!c || !s) return redirectTo(`/c/${slug}/staff/login?expired=1`)
+  if (!c || !s) return redirectTo(`/c/${slug}/admin/login?expired=1`)
   const res = redirectTo(`/c/${slug}/staff`)
   res.cookies.set(staffCookieName(slug), makeStaffSession(slug, s.id), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 12 * 3600 })
   audit(c.id, s.name, 'staff.invite_used', s.username)

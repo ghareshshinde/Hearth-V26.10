@@ -413,12 +413,40 @@ main.wide{max-width:80rem}
 .rhero.compact .rh-by img{width:72px;height:72px}
 .rhero.compact h1{font-size:clamp(1.8rem,4vw,2.6rem)}
 
-/* Role menu, shown to anyone signed in */
-.rolebar{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem 1.25rem;background:#111827;color:#fff;padding:.55rem max(1rem,calc((100vw - 72rem)/2));font-size:.92rem}
-.rolebar a{color:#fff;text-decoration:none}
-.rolebar a:hover{text-decoration:underline}
-.rb-who b{background:var(--color-accent);color:#111827;border-radius:999px;padding:.15rem .7rem;margin-right:.4rem}
-.rb-crumb{opacity:.8}
-.rb-links{display:flex;flex-wrap:wrap;gap:.25rem .5rem;margin-left:auto}
-.rb-links a{border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:.2rem .75rem}
-.rb-links a:hover{background:rgba(255,255,255,.15);text-decoration:none}
+
+
+/* Facts in the header are plain information, not buttons: only the call to action is a yellow pill */
+.rh-facts{gap:.6rem 1.75rem}
+.rh-facts span,.rh-facts span.warm{background:none;border-radius:0;padding:0;font-weight:500;color:rgba(255,255,255,.92)}
+.rh-facts span.warm{font-weight:700;color:#fff}
+.rh-facts span.warm svg{color:var(--color-accent)}
+
+.btn.sm{min-height:36px;padding:0 .9rem;font-size:.9rem}
+.decide{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-top:.4rem}
+
+/* Header menu for signed-in people */
+header.site{position:relative;z-index:20;flex-wrap:wrap}
+header.site>a{flex:none;white-space:nowrap}
+.hnav{display:flex;align-items:center;gap:.25rem;margin-left:auto;flex-wrap:wrap}
+.hnav>a,.hn-menu>summary{display:inline-flex;align-items:center;min-height:44px;padding:0 .7rem;white-space:nowrap;border-radius:8px;font-weight:600;font-size:1rem;color:var(--color-text-primary);cursor:pointer;list-style:none}
+.hn-menu>summary::-webkit-details-marker{display:none}
+.hn-menu>summary::after{content:'';display:inline-block;margin-left:.45rem;width:.45rem;height:.45rem;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);font-size:.8rem;opacity:.7}
+.hnav>a:hover,.hn-menu>summary:hover,.hn-menu[open]>summary{background:color-mix(in srgb,var(--color-primary) 10%,transparent);color:var(--color-primary)}
+.hn-menu{position:relative}
+.hn-menu>div{position:absolute;right:0;top:calc(100% + .3rem);z-index:40;min-width:14rem;display:flex;flex-direction:column;background:var(--color-surface);border:1px solid var(--color-border);border-radius:12px;box-shadow:0 12px 32px rgba(17,24,39,.18);padding:.4rem}
+.hn-menu>div a,.hn-menu>div button{display:block;width:100%;text-align:left;padding:.65rem .8rem;border:0;border-radius:8px;background:none;color:var(--color-text-primary);font-size:1rem;text-decoration:none;cursor:pointer}
+.hn-menu>div a:hover,.hn-menu>div button:hover{background:color-mix(in srgb,var(--color-primary) 10%,transparent);color:var(--color-primary)}
+.hn-menu>div small{padding:.4rem .8rem;color:var(--color-text-secondary);font-weight:600}
+.hn-acct>summary{background:var(--color-primary);color:#fff;margin-left:.5rem}
+.hn-acct>summary:hover,.hn-acct[open]>summary{background:var(--color-primary);color:#fff;filter:brightness(1.1)}
+.hn-acct form{margin:0;border-top:1px solid var(--color-border);margin-top:.25rem;padding-top:.25rem}
+@media (max-width:820px){.hnav{width:100%;margin-left:0}.hn-menu>div{left:0;right:auto}}
+
+/* Quick links under the event header */
+.qlinks{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:1rem;margin:-3.25rem 0 1.75rem;position:relative}
+.qlinks a{display:flex;align-items:center;gap:1rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:14px;padding:1rem 1.25rem;text-decoration:none;color:var(--color-text-primary);box-shadow:0 8px 24px rgba(17,24,39,.14);min-height:72px}
+.qlinks a:hover{border-color:var(--color-primary);transform:translateY(-1px)}
+.ql-ico{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:12px;background:color-mix(in srgb,var(--color-primary) 12%,var(--color-surface));color:var(--color-primary)}
+.ql-ico svg{width:24px;height:24px}
+.qlinks b{display:block;font-size:1.05rem}
+.qlinks small{display:block;color:var(--color-text-secondary);font-size:.88rem}

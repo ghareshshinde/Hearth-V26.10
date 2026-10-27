@@ -24,25 +24,9 @@ async function gateActor(slug: string) {
 }
 const currentGate = async (slug: string) => (await cookies()).get(gateCookieName(slug))?.value ?? ''
 
-// ---------- sign-in ----------
-export async function staffLogin(slug: string, _prev: { error?: string } | undefined, form: FormData) {
-  const c = repo.getCommunityBySlug(slug)
-  const key = `${slug}:${(await headers()).get('x-forwarded-for') ?? 'local'}`
-  const t = tries.get(key)
-  if (t && t.n >= 8 && t.until > Date.now()) return { error: 'Too many attempts. Try again in a few minutes.' }
-  const s = c && staff.verifyStaffLogin(c.id, String(form.get('username') ?? ''), String(form.get('password') ?? ''))
-  if (!c || !s) {
-    tries.set(key, { n: (t && t.until > Date.now() ? t.n : 0) + 1, until: Date.now() + 5 * 60_000 })
-    return { error: 'Wrong username or password' }
-  }
-  tries.delete(key)
-  ;(await cookies()).set(staffCookieName(slug), staff.makeStaffSession(slug, s.id), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 12 * 3600 })
-  repo.audit(c.id, s.name, 'staff.login', s.username)
-  redirect(s.role === 'event' ? `/c/${slug}/admin` : `/c/${slug}/staff`)
-}
 export async function staffLogout(slug: string) {
   ;(await cookies()).delete(staffCookieName(slug))
-  redirect(`/c/${slug}/staff/login`)
+  redirect(`/c/${slug}/admin/login`)
 }
 
 // ---------- gate ----------
