@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { can, navFor, type Who } from '@/lib/access'
+import { can, homeFor, navFor, type Who } from '@/lib/access'
 
 const admin: Who = { kind: 'admin' }
 const eventAdmin: Who = { kind: 'staff', role: 'event', eventId: 7 }
@@ -41,11 +41,22 @@ describe('access', () => {
   })
   it('the menu lists exactly what the role may open', () => {
     const ev = { id: 7, title: 'Fiesta' }
-    const labels = (w: Who) => navFor(w, 'jsg', ev, ['Chess', 'Carrom']).map((l) => l.label)
+    const labels = (w: Who) => navFor(w, 'jsg', ev, ['Chess', 'Carrom']).flatMap((g) => g.links.map((l) => l.label))
     expect(labels(admin)).toContain('Branding')
     expect(labels(eventAdmin)).toEqual(expect.arrayContaining(['Registrations', 'Check-in', 'Chess']))
     expect(labels(eventAdmin)).not.toContain('Branding')
     expect(labels(chess)).toEqual(['Chess', 'Announcements'])
     expect(labels(gate)).toEqual(['Check-in'])
+  })
+  it('the menu stays short: a handful of groups, not a row of every page', () => {
+    const top = navFor(admin, 'jsg', { id: 7, title: 'Fiesta' }, ['Chess', 'Carrom', 'Cricket', 'Badminton', 'Table Tennis', 'Pickleball']).map((g) => g.label)
+    expect(top).toEqual(['Home', 'Event', 'On the day', 'Sports', 'Community'])
+  })
+  it('each role lands on the page it may use after signing in', () => {
+    expect(homeFor(admin, 'jsg')).toBe('/c/jsg/admin')
+    expect(homeFor(eventAdmin, 'jsg')).toBe('/c/jsg/admin')
+    expect(homeFor({ kind: 'staff', role: 'sport', sport: 'Table Tennis' }, 'jsg')).toBe('/c/jsg/staff/sport/Table%20Tennis')
+    expect(homeFor(allSports, 'jsg')).toBe('/c/jsg/staff')
+    expect(homeFor(gate, 'jsg')).toBe('/c/jsg/staff')
   })
 })

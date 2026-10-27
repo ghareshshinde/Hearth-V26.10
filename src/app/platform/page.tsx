@@ -4,7 +4,7 @@ import { checkPlatformSession } from '@/lib/auth'
 import { listCommunities, listEvents } from '@/lib/repo'
 import { platformCookieName } from '@/lib/session'
 import { platformLogout } from '@/app/platform-actions'
-import PlatformLoginForm from '@/components/PlatformLoginForm'
+import SignInForm from '@/components/SignInForm'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +13,7 @@ export default async function Platform() {
     return (
       <main>
         <h1>Application admin</h1>
-        {process.env.PLATFORM_ADMIN_PASSWORD ? <PlatformLoginForm /> : <p className="warn">Not switched on. Set PLATFORM_ADMIN_PASSWORD on the server to use this page.</p>}
+        {process.env.PLATFORM_ADMIN_PASSWORD ? <SignInForm slug={null} /> : <p className="warn">Not switched on. Set PLATFORM_ADMIN_PASSWORD on the server to use this page.</p>}
         <p><Link href="/">Back to Hearth</Link></p>
       </main>
     )

@@ -1,6 +1,7 @@
 import { getDb } from './db'
+import { JSG_PROGRAMME } from './seed-programme'
 import { hashPassword, newRef, newToken } from './auth'
-import { feeKind, columnConfig, eventSettings, emergencyConflicts, extraOf, formatsOf, partnersOf, registrantProblems, skillsOf, validateRow, contactSchema, contactSchemaFor, submissionShape, type ParticipantInput } from './registration/rules'
+import { feeKind, columnConfig, eventSettings, parseItineraryText, emergencyConflicts, extraOf, formatsOf, partnersOf, registrantProblems, skillsOf, validateRow, contactSchema, contactSchemaFor, submissionShape, type ParticipantInput } from './registration/rules'
 import { resolveBranding } from './branding/resolve'
 import { makeTicket } from './ticket'
 
@@ -48,10 +49,11 @@ export function ensureBootstrap() {
   const jsg = one<{ id: number }>("select id from community where slug = 'jsg'")!.id
   const ins = db().prepare("insert into event (community_id,title,description,starts_at,ends_at,venue,map_url,sports,cutoff_at,status) values (?,?,?,?,?,?,?,?,?,'published')")
   const sports = JSON.stringify(['Chess', 'Carrom', 'Cricket', 'Badminton', 'Table Tennis', 'Pickleball'])
-  if (live) // Sunday 13 Dec 2026, IST. Times, venue and map link are placeholders until the committee sets them in the admin console.
+  if (live) { // Sunday 13 Dec 2026, IST. Venue and map link are placeholders until the committee sets them in the admin console.
     ins.run(jsg, 'JSG Sports Fiesta 2026', 'JSG Hyderabad Sports Fiesta 2026. Register your family and guests. Guests give a donation, collected offline at the venue.',
-      '2026-12-13T02:30:00.000Z', '2026-12-13T12:30:00.000Z', 'Venue to be announced', '', sports, '2026-12-11T18:29:00.000Z')
-  else {
+      '2026-12-13T02:30:00.000Z', '2026-12-13T13:30:00.000Z', 'Venue to be announced', '', sports, '2026-12-11T18:29:00.000Z')
+    db().prepare("update event set config = ? where community_id = ? and title = 'JSG Sports Fiesta 2026'").run(JSON.stringify({ itinerary: parseItineraryText(JSG_PROGRAMME) }), jsg)
+  } else {
     const inDays = (d: number) => new Date(Date.now() + d * 86400_000).toISOString()
     ins.run(jsg, 'Sports Fiesta (demo)', 'Demo event with fake details. Replace in the admin console.', inDays(30), inDays(30.4), 'Demo Stadium, Hyderabad', 'https://maps.google.com', sports, inDays(25))
   }

@@ -59,6 +59,6 @@ export async function requireActor(slug: string, allow: (a: Actor | null) => boo
   const c = getCommunityBySlug(slug)
   if (!c) notFound()
   const actor = await getActor(slug)
-  if (!allow(actor)) redirect(actor ? `/c/${slug}/staff` : `/c/${slug}/staff/login`)
+  if (!allow(actor)) redirect(actor ? `/c/${slug}/staff` : `/c/${slug}/admin/login`)
   return { c, actor: actor! }
 }
