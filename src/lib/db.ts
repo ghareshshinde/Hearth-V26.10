@@ -24,6 +24,8 @@ export function getDb(): DatabaseSync {
   addColumn(db, 'participant', 'checked_in_by', 'text')
   addColumn(db, 'participant', 'checked_in_gate', 'text')
   addColumn(db, 'participant', 'donation_collected_at', 'text')
+  addColumn(db, 'participant', 'category', "text not null default ''")
+  db.exec("update participant set category = kind where category = ''")
   addColumn(db, 'participant', 'donation_collected_by', 'text')
   addColumn(db, 'registration', 'source', "text not null default 'online'")
   addColumn(db, 'registration', 'rejected', 'integer not null default 0')

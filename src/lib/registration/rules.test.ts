@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_COLUMNS, DEFAULT_SPORTS, blankRow, groupLink, parseRules, rulesFor, eventSettings, isMobile, isEmail, emergencyConflicts, registrantProblems, parseQuestions, columnConfig, normalizeMobile, parsePaste, validateRow } from './rules'
+import { DEFAULT_COLUMNS, KINDS, kindLabel, feeKind, DEFAULT_SPORTS, blankRow, groupLink, parseRules, rulesFor, eventSettings, isMobile, isEmail, emergencyConflicts, registrantProblems, parseQuestions, columnConfig, normalizeMobile, parsePaste, validateRow } from './rules'
 
 const row = (o = {}) => ({ ...blankRow(), name: 'Asha Shah', age: '34', gender: 'Female', mobile: '98765 43210', sports: ['Chess'], skill: 'casual', ...o })
 
@@ -140,5 +140,12 @@ describe('updates group links', () => {
     for (const bad of ['http://t.me/x', 'https://evil.example/t.me/x', 'https://t.me.evil.example/x', 'javascript:alert(1)', 'https://user:pw@t.me/x', 'https://t.me/', 'not a url', '']) expect(groupLink('telegram', bad), bad).toBe('')
     expect(groupLink('whatsapp', 'https://t.me/x')).toBe('') // each box takes its own app's links
     expect(eventSettings(JSON.stringify({ groups: { whatsapp: 'https://wa.me/123', telegram: 'ftp://t.me/x' } })).groups).toEqual({ whatsapp: 'https://wa.me/123', telegram: '' })
+  })
+})
+
+describe('member categories', () => {
+  it('labels the three categories and charges only plain guests', () => {
+    expect(KINDS.map(kindLabel)).toEqual(['JSG Member', 'JSG Guest Member', 'Guest'])
+    expect([feeKind('member'), feeKind('guest_member'), feeKind('guest')]).toEqual(['member', 'member', 'guest'])
   })
 })

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { currentEvent, findRegistrations, getRegistrationById, listParticipantsOfRegistration, stats, listRows, ticketStatus, regState } from '@/lib/repo'
 import { canCheckIn, gateCookieName, requireActor } from '@/lib/session'
 import { parseTicket } from '@/lib/ticket'
-import { eventSettings } from '@/lib/registration/rules'
+import { eventSettings, kindLabel } from '@/lib/registration/rules'
 import { checkInAction, donationAction, undoCheckInAction } from '@/app/staff-actions'
 import { makeTicket } from '@/lib/ticket'
 import { formatIst } from '@/lib/time'
@@ -75,7 +75,7 @@ export default async function Gate({ params, searchParams }: { params: Promise<{
                 <Pic src={`/img/avatar-${(i % 4) + 1}.svg`} size={44} />
                 <label style={{ flexDirection: 'row', alignItems: 'center', gap: '.6rem', flexGrow: 1, fontSize: '1rem' }}>
                   {p.checked_in_at ? <span style={{ width: 28 }} aria-hidden="true" /> : <input type="checkbox" name="ids" value={p.id} defaultChecked style={{ width: 28, height: 28 }} />}
-                  <span><strong>{p.name}</strong>, {p.age}<br /><small className="muted">{p.kind} · {(JSON.parse(p.sports) as string[]).join(', ')}{p.source === 'spot' ? ' · walk-in' : ''}</small></span>
+                  <span><strong>{p.name}</strong>, {p.age}<br /><small className="muted">{kindLabel(p.category || p.kind)} · {(JSON.parse(p.sports) as string[]).join(', ')}{p.source === 'spot' ? ' · walk-in' : ''}</small></span>
                 </label>
                 {p.kind === 'guest' && (
                   <button formAction={donationAction.bind(null, slug, sp.t!, p.id, !p.donation_collected_at)} title="Donation is collected offline" style={{ minHeight: 44 }}>

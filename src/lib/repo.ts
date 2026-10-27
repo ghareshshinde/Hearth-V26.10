@@ -1,6 +1,6 @@
 import { getDb } from './db'
 import { hashPassword, newRef, newToken } from './auth'
-import { columnConfig, eventSettings, emergencyConflicts, extraOf, formatsOf, partnersOf, registrantProblems, skillsOf, validateRow, contactSchema, contactSchemaFor, submissionShape, type ParticipantInput } from './registration/rules'
+import { feeKind, columnConfig, eventSettings, emergencyConflicts, extraOf, formatsOf, partnersOf, registrantProblems, skillsOf, validateRow, contactSchema, contactSchemaFor, submissionShape, type ParticipantInput } from './registration/rules'
 import { resolveBranding } from './branding/resolve'
 import { makeTicket } from './ticket'
 
@@ -19,7 +19,7 @@ export type RegistrationRow = {
 export type ParticipantRow = {
   id: number; community_id: number; event_id: number; registration_id: number; name: string; age: number; gender: 'Male' | 'Female'
   mobile: string; email: string; sports: string; skill: string; skills: string; formats: string; partners: string; extra: string; diet: string; tshirt: string; accessibility: string
-  kind: 'member' | 'guest'; verified: number; registered_at: string; waitlist: string
+  kind: 'member' | 'guest'; category: string; verified: number; registered_at: string; waitlist: string
   source: string; checked_in_at: string | null; checked_in_by: string | null; checked_in_gate: string | null
   donation_collected_at: string | null; donation_collected_by: string | null
 }
@@ -168,7 +168,7 @@ type InsertOpts = { source?: string; checkedInBy?: string; gate?: string; now?: 
 function insertParticipants(ev: EventRow, rid: number, rows: NonNullable<ReturnType<typeof validateRow>['value']>[], opts: InsertOpts = {}): { id: number; waitlist: string[] }[] {
   const cap = eventSettings(ev.config).capacity
   const used = sportUsage(ev.community_id, ev.id, rid)
-  const st = db().prepare('insert into participant (community_id,event_id,registration_id,name,age,gender,mobile,email,sports,waitlist,skill,skills,formats,partners,extra,diet,tshirt,accessibility,kind,source,checked_in_at,checked_in_by,checked_in_gate) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+  const st = db().prepare('insert into participant (community_id,event_id,registration_id,name,age,gender,mobile,email,sports,waitlist,skill,skills,formats,partners,extra,diet,tshirt,accessibility,kind,category,source,checked_in_at,checked_in_by,checked_in_gate) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
   const made: { id: number; waitlist: string[] }[] = []
   for (const p of rows) {
     const waitlist: string[] = []
@@ -176,7 +176,7 @@ function insertParticipants(ev: EventRow, rid: number, rows: NonNullable<ReturnT
       if (cap[sp] && (used[sp] ?? 0) >= cap[sp]) waitlist.push(sp)
       else used[sp] = (used[sp] ?? 0) + 1
     }
-    const r = st.run(ev.community_id, ev.id, rid, p.name, p.age, p.gender, p.mobile, p.email, JSON.stringify(p.sports), JSON.stringify(waitlist), p.skill, JSON.stringify(p.skills), JSON.stringify(p.formats), JSON.stringify(p.partners), JSON.stringify(p.extra), p.diet, p.tshirt, p.accessibility, p.kind,
+    const r = st.run(ev.community_id, ev.id, rid, p.name, p.age, p.gender, p.mobile, p.email, JSON.stringify(p.sports), JSON.stringify(waitlist), p.skill, JSON.stringify(p.skills), JSON.stringify(p.formats), JSON.stringify(p.partners), JSON.stringify(p.extra), p.diet, p.tshirt, p.accessibility, p.kind, p.category,
       opts.source ?? 'online', opts.checkedInBy ? (opts.now ?? new Date().toISOString()) : null, opts.checkedInBy ?? null, opts.checkedInBy ? (opts.gate ?? '') : null)
     made.push({ id: Number(r.lastInsertRowid), waitlist })
   }
@@ -470,7 +470,7 @@ export function filterRows(rows: Row[], f: Filters): Row[] {
   const q = f.q?.trim().toLowerCase()
   let out = rows.filter((r) =>
     (!q || [r.name, r.mobile, r.reg_ref, r.registrant_name, r.email].some((x) => x.toLowerCase().includes(q))) &&
-    (!f.sport || r.sportList.includes(f.sport)) && (!f.gender || r.gender === f.gender) && (!f.kind || r.kind === f.kind) &&
+    (!f.sport || r.sportList.includes(f.sport)) && (!f.gender || r.gender === f.gender) && (!f.kind || (r.category || r.kind) === f.kind) &&
     (!f.diet || r.diet === f.diet) && (!f.status || r.reg_state === f.status) &&
     (!f.verified || String(r.verified) === (f.verified === 'yes' ? '1' : '0')) &&
     (!f.arrived || (f.arrived === 'yes') === !!r.checked_in_at) && (!f.source || r.source === f.source) &&
@@ -491,19 +491,20 @@ export function adminEditParticipant(cid: number, id: number, field: EditableFie
   const p = one<ParticipantRow>('select * from participant where community_id = ? and id = ?', cid, id)
   if (!p) return { ok: false as const, error: 'Not found' }
   const ev = getEvent(cid, p.event_id)!
-  const row: ParticipantInput = { ...p, age: p.age, sports: JSON.parse(p.sports), skills: skillsOf(p), formats: formatsOf(p), partners: partnersOf(p), extra: extraOf(p) }
-  const before = field === 'sports' ? p.sports : String(p[field])
+  const row: ParticipantInput = { ...p, kind: p.category || p.kind, age: p.age, sports: JSON.parse(p.sports), skills: skillsOf(p), formats: formatsOf(p), partners: partnersOf(p), extra: extraOf(p) }
+  const before = field === 'sports' ? p.sports : field === 'kind' ? (p.category || p.kind) : String(p[field])
   if (field === 'sports') row.sports = value.split(',').map((s) => s.trim()).filter(Boolean)
   else (row as Record<string, unknown>)[field] = value
   const v = validateRow(row, JSON.parse(ev.sports), columnConfig(ev.config), eventSettings(ev.config).ages, eventSettings(ev.config).diets)
   if (!v.ok && v.errors[field]) return { ok: false as const, error: v.errors[field] }
   const stored = field === 'sports' ? JSON.stringify(row.sports) : field === 'age' ? Number(value) : field === 'mobile' && v.value ? v.value.mobile : value
-  db().prepare(`update participant set ${field} = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') where community_id = ? and id = ?`).run(stored, cid, id)
+  if (field === 'kind') db().prepare(`update participant set kind = ?, category = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') where community_id = ? and id = ?`).run(feeKind(value), value, cid, id)
+  else db().prepare(`update participant set ${field} = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') where community_id = ? and id = ?`).run(stored, cid, id)
   audit(cid, actor, 'participant.edited', String(id), { field, before, after: String(stored) })
   return { ok: true as const }
 }
 
-export type BulkAction = 'verify' | 'unverify' | 'confirm' | 'reject' | 'cancel' | 'member' | 'guest' | 'promote'
+export type BulkAction = 'verify' | 'unverify' | 'confirm' | 'reject' | 'cancel' | 'member' | 'guest_member' | 'guest' | 'promote'
 export function bulkAction(cid: number, ids: number[], action: BulkAction, actor: string, note = '') {
   if (!ids.length) return 0
   const d = db()
@@ -514,8 +515,8 @@ export function bulkAction(cid: number, ids: number[], action: BulkAction, actor
       d.prepare(`update participant set verified = ? where community_id = ? and id in (${ph})`).run(action === 'verify' ? 1 : 0, cid, ...ids)
     else if (action === 'promote')
       d.prepare(`update participant set waitlist = '[]' where community_id = ? and id in (${ph})`).run(cid, ...ids)
-    else if (action === 'member' || action === 'guest')
-      d.prepare(`update participant set kind = ? where community_id = ? and id in (${ph})`).run(action, cid, ...ids)
+    else if (action === 'member' || action === 'guest_member' || action === 'guest')
+      d.prepare(`update participant set kind = ?, category = ? where community_id = ? and id in (${ph})`).run(feeKind(action), action, cid, ...ids)
     else {
       const regs = all<{ registration_id: number }>(`select distinct registration_id from participant where community_id = ? and id in (${ph})`, cid, ...ids)
       for (const { registration_id } of regs) {

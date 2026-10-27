@@ -2,7 +2,11 @@ import { z } from 'zod'
 import { sportFormats } from '../sports'
 
 export const GENDERS = ['Male', 'Female'] as const
-export const KINDS = ['member', 'guest'] as const
+export const KINDS = ['member', 'guest_member', 'guest'] as const
+export const KIND_LABEL: Record<string, string> = { member: 'JSG Member', guest_member: 'JSG Guest Member', guest: 'Guest' }
+export const kindLabel = (k: string) => KIND_LABEL[k] ?? k
+/** Only a plain Guest is asked for the guest donation; JSG Members and JSG Guest Members are treated as members. */
+export const feeKind = (k: string): 'member' | 'guest' => (k === 'guest' ? 'guest' : 'member')
 export const SKILLS = ['beginner', 'casual', 'competitive'] as const
 /** Suggestions the event owner can tick when setting up an event. Nothing is assumed: an event with none ticked asks no diet question. */
 export const DIETS = ['Vegetarian', 'Jain', 'Chauvihar', 'Vegan', 'Other'] as const
@@ -183,7 +187,7 @@ export function validateRow(row: ParticipantInput, eventSports: string[], cols: 
   const age = Number(row.age)
   if (row.age === '' || !Number.isInteger(age) || age < 1 || age > 99) errors.age = 'Age 1 to 99'
   if (!GENDERS.includes(row.gender as never)) errors.gender = 'Choose Male or Female'
-  if (!KINDS.includes(row.kind as never)) errors.kind = 'Choose Member or Guest'
+  if (!KINDS.includes(row.kind as never)) errors.kind = 'Choose JSG Member, JSG Guest Member or Guest'
   const adult = age >= 18
   let phone = ''
   if (row.mobile.trim() || adult) {
@@ -246,7 +250,7 @@ export function validateRow(row: ParticipantInput, eventSports: string[], cols: 
     value: ok
       ? { name, age, gender: row.gender as 'Male' | 'Female', mobile: phone, email, sports: [...new Set(row.sports)],
           skill: bestSkill(Object.values(skills)), skills, formats, partners, extra, diet, tshirt: row.tshirt, accessibility: row.accessibility.trim(),
-          kind: row.kind as 'member' | 'guest' }
+          kind: feeKind(row.kind), category: row.kind }
       : null,
   }
 }
@@ -305,7 +309,7 @@ export function parsePaste(text: string, eventSports: string[]): ParticipantInpu
       const v = c[i] ?? ''
       if (k === 'sports') r.sports = v.split(/[,;]/).map((s) => eventSports.find((e) => e.toLowerCase() === s.trim().toLowerCase()) ?? '').filter(Boolean)
       else if (k === 'gender') r.gender = ['male', 'female'].includes(v.toLowerCase()) ? cap(v) : ''
-      else if (k === 'kind') r.kind = v.toLowerCase() === 'guest' ? 'guest' : 'member'
+      else if (k === 'kind') { const t = v.toLowerCase().replace(/^jsg\s+/, '').trim(); r.kind = t === 'guest member' || t === 'guest_member' ? 'guest_member' : t === 'guest' ? 'guest' : 'member' }
       else if (k === 'skill') r.skill = v.toLowerCase()
       else if (k === 'diet') r.diet = v
       else if (v) (r as Record<string, unknown>)[k] = v

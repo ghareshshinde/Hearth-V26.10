@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { requireAccess } from '@/lib/session'
 import { getEvent, pendingRegistrations } from '@/lib/repo'
 import { decideRegistrationAction } from '@/app/actions'
+import { kindLabel } from '@/lib/registration/rules'
 import { formatIst } from '@/lib/time'
 import { sportIcon } from '@/lib/sports'
 import Pic from '@/components/Pic'
@@ -33,7 +34,7 @@ export default async function Review({ params }: { params: Promise<{ slug: strin
               <tbody>
                 {people.map((p) => (
                   <tr key={p.id}>
-                    <td>{p.name}</td><td>{p.age}</td><td>{p.gender}</td><td><span className={`tag ${p.kind === 'guest' ? 'on' : ''}`}>{p.kind}</span></td>
+                    <td>{p.name}</td><td>{p.age}</td><td>{p.gender}</td><td><span className={`tag ${p.kind === 'guest' ? 'on' : ''}`}>{kindLabel(p.category || p.kind)}</span></td>
                     <td><span className="person">{(JSON.parse(p.sports) as string[]).map((s) => <Pic key={s} src={sportIcon(s)} size={22} alt={s} />)} {(JSON.parse(p.sports) as string[]).join(', ')}</span></td>
                   </tr>
                 ))}

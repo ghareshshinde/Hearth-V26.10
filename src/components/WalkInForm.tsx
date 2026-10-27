@@ -27,7 +27,7 @@ export default function WalkInForm({ slug, eventId, sports, diets = [], registra
           {field('mobile', 'Mobile (adults)', { inputMode: 'tel' })}
           <label>Skill<select name="skill" defaultValue={v('skill') || 'casual'}>{SKILLS.map((g) => <option key={g}>{g}</option>)}</select></label>
           {diets.length > 0 && <label>Diet<select name="diet" defaultValue={v('diet')}><option value="">Select</option>{diets.map((g) => <option key={g}>{g}</option>)}</select></label>}
-          <label>Member or Guest<select name="kind" defaultValue={v('kind') || 'guest'}><option value="guest">Guest</option><option value="member">Member</option></select></label>
+          <label>Member or Guest<select name="kind" defaultValue={v('kind') || 'guest'}><option value="guest">Guest</option><option value="member">JSG Member</option><option value="guest_member">JSG Guest Member</option></select></label>
         </div>
         <fieldset><legend>Sports</legend>
           <div className="chips">

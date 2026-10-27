@@ -1,14 +1,14 @@
 import ExcelJS from 'exceljs'
 import { formatIst } from './time'
 import type { Row } from './repo'
-import { extraOf, skillsOf, type Question } from './registration/rules'
+import { extraOf, kindLabel, skillsOf, type Question } from './registration/rules'
 
 const COLS: [string, number, (r: Row) => string | number][] = [
   ['Reference', 12, (r) => r.reg_ref], ['Registered at (IST)', 20, (r) => formatIst(r.registered_at)], ['Registration status', 14, (r) => r.reg_status],
   ['Registrant', 22, (r) => r.registrant_name], ['Registrant mobile', 14, (r) => r.registrant_mobile],
   ['Participant', 24, (r) => r.name], ['Age', 6, (r) => r.age], ['Gender', 9, (r) => r.gender], ['Mobile', 14, (r) => r.mobile], ['Email', 26, (r) => r.email],
   ['Sports', 24, (r) => r.sportList.join(', ')], ['Waitlisted for', 18, (r) => r.waitlistList.join(', ')], ['Skill by sport', 26, (r) => Object.entries(skillsOf(r)).map(([sp, l]) => `${sp}: ${l || '-'}`).join('; ')], ['Diet', 12, (r) => r.diet], ['T-shirt', 8, (r) => r.tshirt],
-  ['Accessibility', 24, (r) => r.accessibility], ['Member or Guest', 12, (r) => r.kind], ['Source', 9, (r) => (r.source === 'spot' ? 'Spot' : 'Online')], ['Arrived (IST)', 20, (r) => formatIst(r.checked_in_at)], ['Gate', 12, (r) => r.checked_in_gate ?? ''], ['Checked in by', 16, (r) => r.checked_in_by ?? ''], ['Donation collected (IST)', 20, (r) => (r.kind === 'guest' ? formatIst(r.donation_collected_at) : 'n/a')], ['Donation collected by', 16, (r) => r.donation_collected_by ?? ''], ['Verified', 9, (r) => (r.verified ? 'Yes' : 'No')],
+  ['Accessibility', 24, (r) => r.accessibility], ['Member or Guest', 12, (r) => kindLabel(r.category || r.kind)], ['Source', 9, (r) => (r.source === 'spot' ? 'Spot' : 'Online')], ['Arrived (IST)', 20, (r) => formatIst(r.checked_in_at)], ['Gate', 12, (r) => r.checked_in_gate ?? ''], ['Checked in by', 16, (r) => r.checked_in_by ?? ''], ['Donation collected (IST)', 20, (r) => (r.kind === 'guest' ? formatIst(r.donation_collected_at) : 'n/a')], ['Donation collected by', 16, (r) => r.donation_collected_by ?? ''], ['Verified', 9, (r) => (r.verified ? 'Yes' : 'No')],
   ['Emergency contact', 22, (r) => r.emergency_name], ['Emergency mobile', 14, (r) => r.emergency_mobile], ['Waiver accepted (IST)', 20, (r) => formatIst(r.waiver_at)],
 ]
 
@@ -34,7 +34,7 @@ function counts(wb: ExcelJS.Workbook, rows: Row[]) {
     ws.addRow([])
   }
   add('Everyone', () => ['All people'])
-  add('Member or guest', (r) => [r.kind])
+  add('Member or guest', (r) => [kindLabel(r.category || r.kind)])
   add('Meals by diet', (r) => [r.diet || 'No diet chosen'])
   add('T-shirt sizes', (r) => [r.tshirt || 'No size'])
   add('Sports (not waitlisted)', (r) => r.sportList.filter((s) => !r.waitlistList.includes(s)))

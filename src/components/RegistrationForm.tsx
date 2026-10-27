@@ -8,7 +8,7 @@ import {
 import type { Contact, SubmitResult } from '@/lib/repo'
 import Pic from '@/components/Pic'
 import { sportFormats, sportIcon } from '@/lib/sports'
-import { suggestEmail } from '@/lib/registration/rules'
+import { suggestEmail, KINDS, KIND_LABEL } from '@/lib/registration/rules'
 
 type Props = {
   slug: string
@@ -214,10 +214,10 @@ export default function RegistrationForm({ slug, eventId, sports, rules = {}, co
       onKeyDown={(e) => onKey(e, i, k)} onPaste={k === 'name' ? (e) => onPaste(e, i) : undefined} aria-label={i === 0 && k === 'name' ? 'Your name' : i === 0 ? `Your ${k}` : k}
       aria-invalid={!!err(i, k)} {...props} />
   )
-  const sel = (i: number, k: keyof ParticipantInput, opts: readonly string[], blank = true) => (
+  const sel = (i: number, k: keyof ParticipantInput, opts: readonly string[], blank = true, labels: Record<string, string> = {}) => (
     <select data-r={i} data-c={k} value={rows[i][k] as string} onChange={(e) => set(i, k, e.target.value)} onBlur={() => touch(`${i}:${k}`)} onKeyDown={(e) => onKey(e, i, k)} aria-label={k}>
       {blank && <option value="">Select</option>}
-      {opts.map((o) => <option key={o} value={o}>{o}</option>)}
+      {opts.map((o) => <option key={o} value={o}>{labels[o] ?? o}</option>)}
     </select>
   )
   void isEmail
@@ -262,7 +262,7 @@ export default function RegistrationForm({ slug, eventId, sports, rules = {}, co
                   {qi === questions.length - 1 && err(i, 'extra') && <small role="alert" className="cellerr">{err(i, 'extra')}</small>}
                 </td>
               ))}
-              {cell('Member or Guest', i, 'kind', sel(i, 'kind', ['member', 'guest'], false))}
+              {cell('Member or Guest', i, 'kind', sel(i, 'kind', KINDS, false, KIND_LABEL))}
               <td className="actions">
                 <button type="button" disabled={!ready} onClick={() => dup(i)} title="Duplicate this person" aria-label={`Duplicate person ${i + 1}`}>Duplicate</button>
                 <button type="button" disabled={!ready} onClick={() => del(i)} title="Delete this person" aria-label={`${rows.length > 1 ? "Delete" : "Clear"} person ${i + 1}`}>{rows.length > 1 ? 'Delete' : 'Clear'}</button>
