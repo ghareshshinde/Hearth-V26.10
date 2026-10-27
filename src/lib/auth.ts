@@ -48,3 +48,18 @@ export function checkSession(value: string | undefined, slug: string, now = Date
 
 export const newToken = () => randomBytes(18).toString('base64url')
 export const newRef = () => `HR-${randomBytes(4).toString('hex').toUpperCase()}`
+
+/** The application admin runs every community. Signed like the others but with its own scope, so a community cookie never unlocks it. */
+export function makePlatformSession(ttlHours = 12, now = Date.now()): string {
+  const body = `platform.${now + ttlHours * 3600_000}`
+  return `${body}.${sign(`platform:${body}`)}`
+}
+export function checkPlatformSession(value: string | undefined, now = Date.now()): boolean {
+  if (!value) return false
+  const i = value.lastIndexOf('.')
+  const body = value.slice(0, i), sig = value.slice(i + 1)
+  const expected = sign(`platform:${body}`)
+  if (sig.length !== expected.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false
+  const [scope, exp] = body.split('.')
+  return scope === 'platform' && Number(exp) > now
+}

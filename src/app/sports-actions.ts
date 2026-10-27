@@ -152,7 +152,7 @@ export async function lockAction(slug: string, compId: number, locked: boolean, 
   const c = repo.getCommunityBySlug(slug)
   const actor = await getActor(slug)
   const comp = c && ops.getCompetition(c.id, compId)
-  if (!c || !comp || actor?.kind !== 'admin') throw new Error('Not authorised')
+  if (!c || !comp || !(actor?.kind === 'admin' || actor?.staff.role === 'event')) throw new Error('Not authorised')
   ops.setLocked(c.id, compId, locked, 'admin')
   await persist()
   revalidatePath(`/c/${slug}`, 'layout')

@@ -13,6 +13,7 @@ export default async function StaffHome({ params }: { params: Promise<{ slug: st
   const sports: string[] = ev ? JSON.parse(ev.sports) : []
   const s = actor.staff
   if (s?.role === 'sport' && s.sport) redirect(`/c/${slug}/staff/sport/${encodeURIComponent(s.sport)}`)
+  if (s?.role === 'event') redirect(`/c/${slug}/admin`)
   const showGate = actor.kind === 'admin' || s?.role === 'gate'
   const showSports = actor.kind === 'admin' || s?.role === 'sports_all'
   return (

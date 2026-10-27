@@ -1,34 +1,38 @@
 import Link from 'next/link'
-import { requireCommunity } from '@/lib/session'
+import { requireAccess } from '@/lib/session'
 import { listEvents, listRows, stats } from '@/lib/repo'
 import { adminLogout } from '@/app/actions'
+import { staffLogout } from '@/app/staff-actions'
 import { formatIst } from '@/lib/time'
 import { sportIcon } from '@/lib/sports'
 import Pic from '@/components/Pic'
 
 export default async function AdminHome({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const c = await requireCommunity(slug, true)
-  const events = listEvents(c.id)
+  const { c, actor } = await requireAccess(slug, 'console')
+  const isAdmin = actor.kind === 'admin'
+  const events = listEvents(c.id).filter((e) => isAdmin || e.id === actor.staff.event_id)
   return (
     <main>
       <meta httpEquiv="refresh" content="60" />
       <header className="ahead">
         {c.brand.logo && <Pic src={c.brand.logo} size={56} alt="" />}
         <div><h1>Admin console</h1><p className="muted">{c.brand.name === 'Hearth' ? c.name : c.brand.name}</p></div>
-        <Link className="btn gold" href={`/c/${slug}/admin/events/new`}>New event</Link>
+        {isAdmin && <Link className="btn gold" href={`/c/${slug}/admin/events/new`}>New event</Link>}
       </header>
-      {process.env.NODE_ENV === 'production' && !process.env.GCS_BUCKET && (
+      {isAdmin && process.env.NODE_ENV === 'production' && !process.env.GCS_BUCKET && (
         <p className="warn" role="alert"><strong>Your data is not backed up automatically.</strong> If the host restarts, registrations can be lost. Download a backup often ({'"Download backup"'} below), or set the GCS_BUCKET setting to a Cloud Storage bucket.</p>
       )}
       <nav className="anav">
+        {isAdmin ? <>
         <Link href={`/c/${slug}/admin/branding`}>Branding</Link>
         <Link href={`/c/${slug}/admin/staff`}>Staff and check-in</Link>
         <Link href={`/c/${slug}/staff/announce`}>Announcements</Link>
         <Link href={`/c/${slug}/admin/audit`}>Audit log and outbox</Link>
         <Link href={`/c/${slug}/admin/password`}>Change password</Link>
         <a href={`/c/${slug}/admin/backup`}>Download backup</a>
-        <form action={adminLogout.bind(null, slug)}><button>Sign out</button></form>
+        </> : <Link href={`/c/${slug}/staff/announce`}>Announcements</Link>}
+        <form action={(isAdmin ? adminLogout : staffLogout).bind(null, slug)}><button>Sign out</button></form>
       </nav>
       {events.map((e) => {
         const s = stats(listRows(c.id, e.id))

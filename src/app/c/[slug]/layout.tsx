@@ -4,6 +4,7 @@ import { brandingToCss } from '@/lib/branding/css'
 import { requireCommunity } from '@/lib/session'
 import { liveAnnouncements } from '@/lib/announcements'
 import Ticker from '@/components/Ticker'
+import RoleBar from '@/components/RoleBar'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +26,7 @@ export default async function CommunityLayout({ children, params }: { children: 
           <strong>{name}</strong>
         </Link>
       </header>
+      <RoleBar slug={slug} communityId={c.id} name={name} />
       {children}
       <Ticker slug={slug} initial={liveAnnouncements(c.id).map(({ id, message, level }) => ({ id, message, level }))} />
     </>

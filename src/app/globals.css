@@ -405,3 +405,20 @@ main.wide{max-width:80rem}
 .kpi b{font-size:1.7rem;line-height:1.1;color:var(--color-primary)}
 .kpi span{font-size:.8rem;color:var(--color-text-secondary)}
 .aact{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-top:1.25rem}
+
+.rh-sub{margin:0;font-size:1.25rem;color:rgba(255,255,255,.9)}
+.rhero.compact{grid-template-columns:1fr;min-height:0}
+.rhero.compact .rh-l{padding:2rem max(1.5rem,calc((100vw - 64rem)/2 + 1rem));gap:.75rem}
+.rhero.compact .rh-by p{display:none}
+.rhero.compact .rh-by img{width:72px;height:72px}
+.rhero.compact h1{font-size:clamp(1.8rem,4vw,2.6rem)}
+
+/* Role menu, shown to anyone signed in */
+.rolebar{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem 1.25rem;background:#111827;color:#fff;padding:.55rem max(1rem,calc((100vw - 72rem)/2));font-size:.92rem}
+.rolebar a{color:#fff;text-decoration:none}
+.rolebar a:hover{text-decoration:underline}
+.rb-who b{background:var(--color-accent);color:#111827;border-radius:999px;padding:.15rem .7rem;margin-right:.4rem}
+.rb-crumb{opacity:.8}
+.rb-links{display:flex;flex-wrap:wrap;gap:.25rem .5rem;margin-left:auto}
+.rb-links a{border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:.2rem .75rem}
+.rb-links a:hover{background:rgba(255,255,255,.15);text-decoration:none}

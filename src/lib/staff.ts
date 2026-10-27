@@ -2,9 +2,9 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { getDb } from './db'
 import { hashPassword, signValue, verifyPassword } from './auth'
 
-export type StaffRole = 'sport' | 'sports_all' | 'gate'
+export type StaffRole = 'event' | 'sport' | 'sports_all' | 'gate'
 export type StaffRow = {
-  id: number; community_id: number; name: string; role: StaffRole; sport: string | null; username: string
+  id: number; community_id: number; name: string; role: StaffRole; sport: string | null; event_id: number | null; username: string
   password_hash: string; invite_hash: string | null; invite_expires_at: string | null; active: number; created_at: string
 }
 export type StaffCredentials = { staff: StaffRow; username: string; password: string; inviteToken: string; inviteExpiresAt: string }
@@ -26,14 +26,15 @@ export function inviteExpiry(endsAt: string | null, now = new Date()): string {
   return new Date(Math.max(end, now.getTime() + 3600_000)).toISOString()
 }
 
-export function createStaff(cid: number, input: { name: string; role: StaffRole; sport?: string | null }, expiresAt: string): StaffCredentials {
+export function createStaff(cid: number, input: { name: string; role: StaffRole; sport?: string | null; eventId?: number | null }, expiresAt: string): StaffCredentials {
   if (input.role === 'sport' && !input.sport) throw new Error('A sport admin needs a sport')
-  const base = input.role === 'gate' ? 'gate' : input.role === 'sports_all' ? 'sports' : slug(input.sport!)
+  if (input.role === 'event' && !input.eventId) throw new Error('An event admin needs an event')
+  const base = input.role === 'sport' ? slug(input.sport!) : { gate: 'gate', sports_all: 'sports', event: 'event' }[input.role]
   const username = nextUsername(cid, base)
   const password = randomPassword()
   const inviteToken = randomBytes(18).toString('base64url')
-  const id = Number(db().prepare('insert into staff (community_id,name,role,sport,username,password_hash,invite_hash,invite_expires_at) values (?,?,?,?,?,?,?,?)')
-    .run(cid, input.name.trim() || username, input.role, input.role === 'sport' ? input.sport! : null, username, hashPassword(password), sha(inviteToken), expiresAt).lastInsertRowid)
+  const id = Number(db().prepare('insert into staff (community_id,name,role,sport,event_id,username,password_hash,invite_hash,invite_expires_at) values (?,?,?,?,?,?,?,?,?)')
+    .run(cid, input.name.trim() || username, input.role, input.role === 'sport' ? input.sport! : null, input.role === 'event' ? input.eventId! : null, username, hashPassword(password), sha(inviteToken), expiresAt).lastInsertRowid)
   return { staff: getStaff(cid, id)!, username, password, inviteToken, inviteExpiresAt: expiresAt }
 }
 

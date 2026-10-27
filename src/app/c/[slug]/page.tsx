@@ -15,7 +15,7 @@ export default async function CommunityHome({ params }: { params: Promise<{ slug
   const name = c.brand.name === 'Hearth' ? c.name : c.brand.name
   return (
     <>
-      <PageHero logo={c.brand.logo} by={name} title={c.brand.tagline || name} />
+      <PageHero compact logo={c.brand.logo} by={name} title={name} subtitle={c.brand.tagline} />
       <main>
         <p>{c.about}</p>
         <h2>{t('events')}</h2>

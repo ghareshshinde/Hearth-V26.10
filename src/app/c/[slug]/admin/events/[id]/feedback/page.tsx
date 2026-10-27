@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getEvent } from '@/lib/repo'
-import { requireCommunity } from '@/lib/session'
+import { requireAccess } from '@/lib/session'
 import { feedbackMode, feedbackOpen, feedbackSummary, listFeedback } from '@/lib/feedback'
 import { feedbackModeAction, requestFeedbackAction } from '@/app/feedback-actions'
 import { formatIst } from '@/lib/time'
@@ -9,7 +9,7 @@ import { formatIst } from '@/lib/time'
 export default async function FeedbackReport({ params, searchParams }: { params: Promise<{ slug: string; id: string }>; searchParams: Promise<{ msg?: string }> }) {
   const { slug, id } = await params
   const q = await searchParams
-  const c = await requireCommunity(slug, true)
+  const { c } = await requireAccess(slug, 'event', { eventId: Number(id) })
   const ev = getEvent(c.id, Number(id))
   if (!ev) notFound()
   const s = feedbackSummary(c.id, ev.id)

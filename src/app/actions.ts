@@ -3,8 +3,9 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
-import { checkSession, makeSession, verifyPassword } from '@/lib/auth'
-import { cookieName } from '@/lib/session'
+import { makeSession, verifyPassword } from '@/lib/auth'
+import type { Scope } from '@/lib/access'
+import { assertAccess, cookieName } from '@/lib/session'
 import * as repo from '@/lib/repo'
 import { persist } from '@/lib/persist'
 import { allow } from '@/lib/ratelimit'
@@ -18,11 +19,8 @@ import { resolveBranding, validateContrast } from '@/lib/branding/resolve'
 import { istInputToIso } from '@/lib/time'
 import { DEFAULT_COLUMNS, RULE_KEYS, parseGroups, parseItineraryText, parseQuestions, parseRules, type OptionalColumn } from '@/lib/registration/rules'
 
-async function adminCtx(slug: string) {
-  const c = repo.getCommunityBySlug(slug)
-  if (!c || !checkSession((await cookies()).get(cookieName(slug))?.value, slug)) throw new Error('Not authorised')
-  return c
-}
+/** Refuses unless the signed-in person may do this: community-wide by default, or inside one event. */
+const adminCtx = async (slug: string, scope: Scope = 'community', ctx: { eventId?: number } = {}) => (await assertAccess(slug, scope, ctx)).c
 
 // ---------- public ----------
 export async function submitRegistration(slug: string, eventId: number, contact: Contact, rows: ParticipantInput[]): Promise<SubmitResult> {
@@ -116,7 +114,7 @@ export async function adminLogout(slug: string) {
 
 // ---------- admin: events ----------
 export async function saveEventAction(slug: string, eventId: number | null, form: FormData) {
-  const c = await adminCtx(slug)
+  const c = eventId ? await adminCtx(slug, 'event', { eventId }) : await adminCtx(slug)
   const cols = Object.fromEntries((Object.keys(DEFAULT_COLUMNS) as OptionalColumn[]).map((k) => [k, { show: form.get(`show_${k}`) === 'on', required: form.get(`req_${k}`) === 'on' }]))
   const sports: string[] = []
   const capacity: Record<string, number> = {}
@@ -157,7 +155,8 @@ export async function saveEventAction(slug: string, eventId: number | null, form
 
 // ---------- admin: workspace ----------
 export async function editParticipantAction(slug: string, id: number, field: repo.EditableField, value: string) {
-  const c = await adminCtx(slug)
+  const cm = repo.getCommunityBySlug(slug)
+  const c = await adminCtx(slug, 'event', { eventId: cm ? repo.participantEvent(cm.id, id) : undefined })
   if (!repo.EDITABLE.includes(field)) return { ok: false as const, error: 'Field not editable' }
   const r = repo.adminEditParticipant(c.id, id, field, value, 'admin')
   await persist()
@@ -165,10 +164,10 @@ export async function editParticipantAction(slug: string, id: number, field: rep
   return r
 }
 export async function bulkActionForm(slug: string, eventId: number, form: FormData) {
-  const c = await adminCtx(slug)
+  const c = await adminCtx(slug, 'event', { eventId })
   const action = String(form.get('action')) as repo.BulkAction
   if (!['verify', 'unverify', 'confirm', 'reject', 'cancel', 'member', 'guest', 'promote'].includes(action)) return
-  const ids = form.getAll('ids').map(Number).filter(Number.isInteger)
+  const ids = form.getAll('ids').map(Number).filter((n) => Number.isInteger(n) && repo.participantEvent(c.id, n) === eventId)
   repo.bulkAction(c.id, ids, action, 'admin', String(form.get('note') ?? '').trim())
   await persist()
   revalidatePath(`/c/${slug}/admin`)
@@ -211,7 +210,8 @@ export async function changePasswordAction(slug: string, _prev: { error?: string
 
 // ---------- admin: approve or reject ----------
 export async function decideRegistrationAction(slug: string, eventId: number, registrationId: number, decision: 'approve' | 'reject', form: FormData) {
-  const c = await adminCtx(slug)
+  const c = await adminCtx(slug, 'event', { eventId })
+  if (repo.registrationEvent(c.id, registrationId) !== eventId) throw new Error('Not authorised')
   const note = String(form.get('note') ?? '').trim()
   if (decision === 'approve') repo.approveRegistration(c.id, registrationId, 'admin', note)
   else repo.rejectRegistration(c.id, registrationId, 'admin', note)

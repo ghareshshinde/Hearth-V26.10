@@ -3,7 +3,7 @@ import { useActionState } from 'react'
 import { createStaffAction, resetStaffAction, seedStaffAction, setStaffActiveAction, type Issued, type StaffState } from '@/app/staff-actions'
 import { formatIst } from '@/lib/time'
 
-const roleLabel = (role: string, sport: string | null) => (role === 'sport' ? `${sport} admin` : role === 'sports_all' ? 'Common sports admin (all sports)' : 'Gate volunteer')
+const roleLabel = (role: string, sport: string | null) => (role === 'sport' ? `${sport} admin` : { event: 'Event admin (this event)', sports_all: 'Common sports admin (all sports)', gate: 'Check-in volunteer' }[role])
 
 /** Credentials are shown once, here, because only hashes are stored. */
 export function IssuedSheet({ issued }: { issued: Issued[] }) {
@@ -33,7 +33,7 @@ export function NewStaffForm({ slug, eventId, sports }: { slug: string; eventId:
         <label>Name<input name="name" placeholder="e.g. Rohan (Badminton)" /></label>
         <label>Role
           <select name="role" defaultValue="sport">
-            <option value="sport">Sport admin</option><option value="sports_all">Common sports admin</option><option value="gate">Gate volunteer</option>
+            <option value="event">Event admin</option><option value="sport">Sport admin</option><option value="sports_all">Common sports admin</option><option value="gate">Check-in volunteer</option>
           </select>
         </label>
         <label>Sport (sport admins)<select name="sport" defaultValue="">{[<option key="" value="">None</option>, ...sports.map((s) => <option key={s}>{s}</option>)]}</select></label>

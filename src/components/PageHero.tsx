@@ -11,18 +11,19 @@ export const ICONS = {
 }
 
 /** The page header every public page shares: who presents it, the title, key facts, and a picture panel. */
-export default function PageHero({ logo, by, title, facts = [], sports = [], actions, trophy = true }: {
-  logo?: string | null; by: string; title: string; sports?: string[]; actions?: ReactNode; trophy?: boolean
+export default function PageHero({ logo, by, title, subtitle, facts = [], sports = [], actions, trophy = true, compact }: {
+  logo?: string | null; by: string; title: string; subtitle?: string; sports?: string[]; actions?: ReactNode; trophy?: boolean; compact?: boolean
   facts?: { icon: keyof typeof ICONS; text: string; warm?: boolean }[]
 }) {
   return (
-    <section className="rhero">
+    <section className={compact ? 'rhero compact' : 'rhero'}>
       <div className="rh-l">
         <div className="rh-by">
           {logo && <Pic src={logo} size={88} alt={by} />}
           <p>Presented by<b>{by}</b></p>
         </div>
         <h1>{title}</h1>
+        {subtitle && <p className="rh-sub">{subtitle}</p>}
         {facts.length > 0 && (
           <div className="rh-facts">
             {facts.map((f) => <span key={f.text} className={f.warm ? 'warm' : undefined}><Ico d={ICONS[f.icon]} />{f.text}</span>)}
@@ -30,10 +31,10 @@ export default function PageHero({ logo, by, title, facts = [], sports = [], act
         )}
         {actions && <div className="rh-actions">{actions}</div>}
       </div>
-      <div className="rh-r">
+      {!compact && <div className="rh-r">
         {trophy && <Pic src="/img/trophy.svg" width={150} height={192} />}
         {sports.length > 0 && <div className="rh-coll">{sports.slice(0, 6).map((sp) => <div key={sp}><Pic src={sportIcon(sp)} size={64} alt={sp} /></div>)}</div>}
-      </div>
+      </div>}
     </section>
   )
 }

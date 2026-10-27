@@ -1,14 +1,14 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getEvent } from '@/lib/repo'
-import { requireCommunity } from '@/lib/session'
+import { requireAccess } from '@/lib/session'
 import { clashes, listDuties } from '@/lib/duties'
 import { addDutyAction, removeDutyAction } from '@/app/duty-actions'
 
 export default async function Duties({ params, searchParams }: { params: Promise<{ slug: string; id: string }>; searchParams: Promise<{ msg?: string; err?: string }> }) {
   const { slug, id } = await params
   const q = await searchParams
-  const c = await requireCommunity(slug, true)
+  const { c } = await requireAccess(slug, 'event', { eventId: Number(id) })
   const ev = getEvent(c.id, Number(id))
   if (!ev) notFound()
   const duties = listDuties(c.id, ev.id)

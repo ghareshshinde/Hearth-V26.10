@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { requireCommunity } from '@/lib/session'
+import { requireAccess } from '@/lib/session'
 import { getEvent, pendingRegistrations } from '@/lib/repo'
 import { decideRegistrationAction } from '@/app/actions'
 import { formatIst } from '@/lib/time'
@@ -9,7 +9,7 @@ import Pic from '@/components/Pic'
 
 export default async function Review({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params
-  const c = await requireCommunity(slug, true)
+  const { c } = await requireAccess(slug, 'event', { eventId: Number(id) })
   const ev = getEvent(c.id, Number(id))
   if (!ev) notFound()
   const queue = pendingRegistrations(c.id, ev.id)

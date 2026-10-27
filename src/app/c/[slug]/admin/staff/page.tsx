@@ -40,7 +40,7 @@ export default async function StaffAdminPage({ params, searchParams }: { params:
         <tbody>
           {staff.map((m) => (
             <tr key={m.id} style={m.active ? undefined : { opacity: 0.5 }}>
-              <td>{m.name}</td><td>{m.role === 'sport' ? `${m.sport} admin` : m.role === 'sports_all' ? 'Common sports admin' : 'Gate volunteer'}</td><td><code>{m.username}</code></td>
+              <td>{m.name}</td><td>{m.role === 'sport' ? `${m.sport} admin` : { event: `Event admin${m.event_id ? ` (event ${m.event_id})` : ''}`, sports_all: 'Common sports admin', gate: 'Check-in volunteer' }[m.role]}</td><td><code>{m.username}</code></td>
               <td>{m.invite_expires_at ? formatIst(m.invite_expires_at) : ''}</td><td>{m.active ? 'active' : 'revoked'}</td>
               <td><ResetButton slug={slug} staffId={m.id} eventId={ev.id} /> <ActiveToggle slug={slug} staffId={m.id} active={!!m.active} /></td>
             </tr>

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { requireCommunity } from '@/lib/session'
+import { requireAccess } from '@/lib/session'
 import { filterRows, getEvent, listRows, stats, type Filters } from '@/lib/repo'
 import { bulkActionForm } from '@/app/actions'
 import { GENDERS, TSHIRTS, eventSettings, extraOf, skillsOf } from '@/lib/registration/rules'
@@ -11,7 +11,7 @@ import ConfirmButton from '@/components/ConfirmButton'
 export default async function Registrations({ params, searchParams }: { params: Promise<{ slug: string; id: string }>; searchParams: Promise<Filters> }) {
   const { slug, id } = await params
   const f = await searchParams
-  const c = await requireCommunity(slug, true)
+  const { c } = await requireAccess(slug, 'event', { eventId: Number(id) })
   const ev = getEvent(c.id, Number(id))
   const diets = ev ? eventSettings(ev.config).diets : []
   const questions = ev ? eventSettings(ev.config).questions : []

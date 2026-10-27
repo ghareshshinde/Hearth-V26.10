@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import * as repo from '@/lib/repo'
 import * as staff from '@/lib/staff'
 import { persist } from '@/lib/persist'
-import { canCheckIn, gateCookieName, getActor, staffCookieName } from '@/lib/session'
+import { assertAccess, canCheckIn, gateCookieName, getActor, staffCookieName } from '@/lib/session'
 import type { ParticipantInput } from '@/lib/registration/rules'
 
 const tries = new Map<string, { n: number; until: number }>()
@@ -38,7 +38,7 @@ export async function staffLogin(slug: string, _prev: { error?: string } | undef
   tries.delete(key)
   ;(await cookies()).set(staffCookieName(slug), staff.makeStaffSession(slug, s.id), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 12 * 3600 })
   repo.audit(c.id, s.name, 'staff.login', s.username)
-  redirect(`/c/${slug}/staff`)
+  redirect(s.role === 'event' ? `/c/${slug}/admin` : `/c/${slug}/staff`)
 }
 export async function staffLogout(slug: string) {
   ;(await cookies()).delete(staffCookieName(slug))
@@ -128,10 +128,10 @@ export async function createStaffAction(slug: string, _prev: StaffState | undefi
   if (!ev) return { error: 'Pick an event first' }
   const role = String(form.get('role')) as staff.StaffRole
   const sport = String(form.get('sport') ?? '') || null
-  if (!['sport', 'sports_all', 'gate'].includes(role)) return { error: 'Choose a role' }
+  if (!['event', 'sport', 'sports_all', 'gate'].includes(role)) return { error: 'Choose a role' }
   if (role === 'sport' && (!sport || !(JSON.parse(ev.sports) as string[]).includes(sport))) return { error: 'Choose a sport for a sport admin' }
-  const cred = staff.createStaff(c.id, { name: String(form.get('name') ?? ''), role, sport }, staff.inviteExpiry(ev.ends_at))
-  repo.audit(c.id, 'admin', 'staff.created', cred.username, { role, sport })
+  const cred = staff.createStaff(c.id, { name: String(form.get('name') ?? ''), role, sport, eventId: ev.id }, staff.inviteExpiry(ev.ends_at))
+  repo.audit(c.id, 'admin', 'staff.created', cred.username, { role, sport, eventId: role === 'event' ? ev.id : null })
   await persist()
   revalidatePath(`/c/${slug}/admin/staff`)
   return { issued: [toIssued(await baseUrl(), slug, cred)] }
@@ -170,7 +170,7 @@ export async function setStaffActiveAction(slug: string, staffId: number, active
 }
 
 export async function saveDeskSettingsAction(slug: string, eventId: number, form: FormData) {
-  const c = await adminOnly(slug)
+  const { c } = await assertAccess(slug, 'event', { eventId })
   const ev = repo.getEvent(c.id, eventId)
   if (!ev) throw new Error('Event not found')
   const cfg = JSON.parse(ev.config || '{}')

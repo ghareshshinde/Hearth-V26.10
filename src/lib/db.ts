@@ -13,6 +13,7 @@ export function getDb(): DatabaseSync {
   db = new DatabaseSync(path)
   db.exec('pragma journal_mode = wal; pragma foreign_keys = on;')
   db.exec(SCHEMA)
+  widenStaffRoles(db)
   addColumn(db, 'participant', 'formats', "text not null default '{}'")
   addColumn(db, 'participant', 'partners', "text not null default '{}'")
   addColumn(db, 'participant', 'extra', "text not null default '{}'")
@@ -44,4 +45,14 @@ export function resetDbForTests() {
 function addColumn(d: DatabaseSync, table: string, column: string, def: string) {
   const cols = d.prepare(`pragma table_info(${table})`).all() as { name: string }[]
   if (!cols.some((c) => c.name === column)) d.exec(`alter table ${table} add column ${column} ${def}`)
+}
+
+/** Databases made before the event admin role have a staff table whose role check rejects it: rebuild it once. */
+function widenStaffRoles(d: DatabaseSync) {
+  const t = d.prepare("select sql from sqlite_master where type = 'table' and name = 'staff'").get() as { sql: string } | undefined
+  if (!t || t.sql.includes("'event'")) return
+  d.exec('alter table staff rename to staff_old')
+  d.exec(SCHEMA)
+  d.exec('insert into staff (id,community_id,name,role,sport,username,password_hash,invite_hash,invite_expires_at,active,created_at) select id,community_id,name,role,sport,username,password_hash,invite_hash,invite_expires_at,active,created_at from staff_old')
+  d.exec('drop table staff_old')
 }

@@ -2,7 +2,7 @@
 import { redirect } from 'next/navigation'
 import { getCommunityBySlug, getEvent, getRegistrationByToken } from '@/lib/repo'
 import { saveFeedback, setFeedbackMode, queueFeedbackRequests, type FeedbackMode } from '@/lib/feedback'
-import { isAdminSession } from '@/lib/session'
+import { assertAccess } from '@/lib/session'
 import { persist } from '@/lib/persist'
 import { allow } from '@/lib/ratelimit'
 import { deliverEmails } from '@/lib/mail'
@@ -21,8 +21,7 @@ export async function submitFeedbackAction(slug: string, token: string, form: Fo
 }
 
 async function adminEvent(slug: string, eventId: number) {
-  const c = getCommunityBySlug(slug)
-  if (!c || !(await isAdminSession(slug))) throw new Error('Not authorised')
+  const { c } = await assertAccess(slug, 'event', { eventId })
   const ev = getEvent(c.id, eventId)
   if (!ev) throw new Error('Not found')
   return { c, ev }

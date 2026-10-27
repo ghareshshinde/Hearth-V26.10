@@ -22,7 +22,8 @@ export default async function Console({ params, searchParams }: { params: Promis
   const { c, actor } = await requireActor(slug, (a) => canSeeSport(a, sport))
   const comp = getCompetition(c.id, Number(cid))
   if (!comp || comp.sport !== sport) notFound()
-  const isAdmin = (await getActor(slug))?.kind === 'admin'
+  const me = await getActor(slug)
+  const isAdmin = me?.kind === 'admin' || me?.staff.role === 'event'
   const entries = listEntries(c.id, comp.id)
   const live = entries.filter((e) => !e.withdrawn)
   const matches = listMatches(c.id, comp.id)

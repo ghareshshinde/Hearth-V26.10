@@ -1,14 +1,13 @@
 import ExcelJS from 'exceljs'
 import { cookies } from 'next/headers'
-import { checkSession } from '@/lib/auth'
 import { audit, getCommunityBySlug, getEvent } from '@/lib/repo'
 import { listFeedback } from '@/lib/feedback'
-import { cookieName } from '@/lib/session'
+import { hasAccess } from '@/lib/session'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params
   const c = getCommunityBySlug(slug)
-  if (!c || !checkSession((await cookies()).get(cookieName(slug))?.value, slug)) return new Response('Unauthorised', { status: 401 })
+  if (!c || !(await hasAccess(slug, 'event', { eventId: Number(id) }))) return new Response('Unauthorised', { status: 401 })
   const ev = getEvent(c.id, Number(id))
   if (!ev) return new Response('Not found', { status: 404 })
   const wb = new ExcelJS.Workbook()

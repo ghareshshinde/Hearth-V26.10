@@ -88,6 +88,8 @@ export function currentEvent(cid: number): EventRow | undefined {
   const all = listEvents(cid)
   return all.find((e) => e.status !== 'draft') ?? all[0]
 }
+export const participantEvent = (cid: number, id: number) => one<{ event_id: number }>('select event_id from participant where community_id = ? and id = ?', cid, id)?.event_id
+export const registrationEvent = (cid: number, id: number) => one<{ event_id: number }>('select event_id from registration where community_id = ? and id = ?', cid, id)?.event_id
 export const getEvent = (cid: number, id: number) => one<EventRow>('select * from event where community_id = ? and id = ?', cid, id)
 
 export type EventInput = Omit<EventRow, 'id' | 'community_id'>

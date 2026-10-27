@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { requireCommunity } from '@/lib/session'
+import { requireAccess } from '@/lib/session'
 import { getEvent } from '@/lib/repo'
 import { listCompetitions, listEntries, listMatches, podium } from '@/lib/sports-ops'
 import { lockAction } from '@/app/sports-actions'
@@ -10,7 +10,7 @@ import ConfirmButton from '@/components/ConfirmButton'
 
 export default async function CompetitionsAdmin({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params
-  const c = await requireCommunity(slug, true)
+  const { c } = await requireAccess(slug, 'event', { eventId: Number(id) })
   const ev = getEvent(c.id, Number(id))
   if (!ev) notFound()
   const comps = listCompetitions(c.id, ev.id)
